@@ -67,26 +67,35 @@ def db_connect():
         sys.exit(1)
 
 
-def db_select(cursor, _SQL):
+def db_select(cursor, _SQL, valores = ()):
     """Ejecutar un SELECT y retornar la lista de registros encontrados cursor.fetchall()"""
-    cursor.execute(_SQL)
+    if len(valores) == 0:
+        cursor.execute(_SQL)
+    else:
+        cursor.execute(_SQL, valores)
     return cursor.fetchall()
 
 
 def select_programa(cursor):
+    """Selecciona el programa de la lista de programas activos"""
     _SELECT = """SELECT id, nombre_excel, nombre_monitor, nombre_salida 
                 FROM programas WHERE activo = 1"""
     while True:
         print('ID\t%-25s\t%-15s\t%s' % ('Programa', 'Monitor', 'Salida'))
-        print('==\t','='*25, '\t', '='*15, '\t', '='*8)
+        print('==\t'+'='*25+ '\t'+ '='*15+ '\t'+ '='*8)
+
+        programas = []
         for row in db_select(cursor, _SELECT):
             print(f'{row[0]}\t{row[1]:25}\t{row[2]:15}\t{row[3]}')
+            programas.append(str(row[0]))
+
         prog = input('Por favor seleccione un ID de programa de la lista:')
-        if int(prog) > 0:
+        if prog in programas:
             return(prog)
 
 
 def obtener_datos_de_csv(prog):
+    """Lee el fichero CSV y devuelve la lista de Tuplas (valores) a insertar en la DB"""
     # El o los ficheros CSV los debemos obtener de un directorio específico
     # comprobando que exista el directorio y el fichero
     csv_file = '202209 to_access.csv'
@@ -110,6 +119,7 @@ def obtener_datos_de_csv(prog):
         return(valores)
     
 def db_insert(conn, cursor, datos):
+    """Ejecuta el INSERT en la DB"""
     _INSERT = """
         INSERT IGNORE INTO llamadas_copy (fecha,  hora, llamante, dur, station, voice_file,
             log_name, resultado, programa_id
@@ -121,17 +131,53 @@ def db_insert(conn, cursor, datos):
         print(f"Error: {e}")
         return
     conn.commit()
-    
+
+
+def introducir_datos(conn, cursor):
+    programa_id = select_programa(cursor)
+    datos_a_insertar = obtener_datos_de_csv(programa_id)
+    db_insert(conn, cursor, datos_a_insertar)
+
+
+def filtros_dias_agente(programa_id):
+    aaaa = '2022'
+    mm = '10'
+    return(aaaa, mm, programa_id)
+
+
+def dias_por_agente(cursor):
+    _SELECT =   """SELECT log_name AS nombre, COUNT(fecha) AS n_dias
+                        FROM ( 
+                            SELECT DISTINCT log_name, fecha
+                                FROM llamadas 
+                            WHERE YEAR(fecha) = ? AND MONTH(fecha) = ? 
+                            AND programa_id = ?
+                        ) table_alias
+                        GROUP BY nombre
+                """
+    programa_id = select_programa(cursor)
+    filtros = filtros_dias_agente(programa_id)
+
+    print('%-16s %s' % ('Agente', 'Días'))
+    print('='*16, '='*4)
+    for row in db_select(cursor, _SELECT, filtros):
+        print(f'{row[0]:16} {row[1]:4}')
+    print()
+
     
 def main():
     conn, cursor = db_connect()
-    #print(conn, cursor)
 
-    programa_id = select_programa(cursor)
-    # programa_id = str(1)
-    datos_a_insertar = obtener_datos_de_csv(programa_id)
-    db_insert(conn, cursor, datos_a_insertar)
-    # print(datos_a_insertar)
+    while True:
+        print('1 - Para introducir datos')
+        print('2 - Para número de dias por agente por mes y año')
+        hacer = input('0 - Para salir: ')
+        if hacer == '0':
+            return()
+        elif hacer == '1':
+            introducir_datos(conn, cursor)
+        elif hacer == '2':
+            dias_por_agente(cursor)
 
 
 if __name__ == "__main__":
