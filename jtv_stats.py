@@ -3,6 +3,11 @@ import sys
 import csv
 import pandas as pd
 import os
+# If you need some kind of interaction with the page, use Selenium.
+import selenium
+from time import sleep
+from datetime import datetime
+from datetime import timedelta
 
 
 def check_fecha(fecha) -> str:
@@ -194,7 +199,7 @@ def check_filename(file_name):
 
 
 def ano_mes():
-    """Permite seleccionar el año y mes a ser procesado"""
+    """Permite seleccionar el año y mes a ser procesado."""
     while True:
         mm = input('Escriba el mes (1-12) que desea procesar: ')
         if int(mm) not in range(1,13):
@@ -241,13 +246,69 @@ def crear_csv(cursor):
     new_df.to_csv(f'{aaaa}{mm} {salida} {csv_file}', sep=';', index=False)
 
 
+def fin_de_mes(aaaa, mm):
+    """Ver cuantos días tiene un mes usando datetime y timedelta"""
+    fi = f'01-{int(mm):02}-{aaaa}'
+    mf = int(mm) + 1
+    aaaaf = int(aaaa)
+    if mf == 13:
+        mf = 1
+        aaaaf = int(aaaa) + 1
+    ff = f'01-{int(mf):02}-{aaaaf}'
+    di = datetime.strptime(fi, "%d-%m-%Y")
+    df = datetime.strptime(ff, "%d-%m-%Y")
+    t = df - di
+    return(t.days)
+
+
+def d_ini_d_fin(aaaa, mm):
+    """Preguntar y comprobar día de inicio y día de fin a sacar."""
+    d_ini = 1
+    d_fin = int(fin_de_mes(aaaa, mm))
+
+    ini = d_ini
+    fin = d_fin
+    while True:
+        ok = input(f'¿Sacar todo el mes, del 1 al {d_fin}? 1 = Sí, 0 = no: ')
+        if ok == '1':
+            return(d_ini, d_fin)
+        
+        ini = input('Día inicial: ')
+        if int(ini) > d_fin:
+            print(f'Error: el día de inicio no puede ser mayor que el máximo número de días del mes ({d_fin})')
+            continue
+        elif int(ini) < 1:
+            print('Error: el día de inicio no puede ser menor que 1')
+            continue
+       
+        fin = input('Día final: ')
+        if int(fin) > d_fin:
+            print(f'Error: el día de fin no puede ser mayor que el máximo número de días del mes ({d_fin})')
+            continue
+        elif int(fin) < 1 or int(fin) < int(ini):
+            print('Error: el día de fin no puede ser menor que 1 o anterior al día de inicio')
+            continue
+
+        return(ini, fin)
+
+
+def sacar_datos_web():
+    """Saca los datos de la web para procesarlos."""
+    aaaa, mm = ano_mes()
+    d_ini, d_fin = d_ini_d_fin(aaaa, mm)
+
+    for dd in range(int(d_ini), int(d_fin)+1):
+        print(f'{dd:02}-{mm}-{aaaa}')
+
+
 def main():
     conn, cursor = db_connect()
 
     while True:
         print('\n1 - Para introducir datos')
         print('2 - Para número de dias por agente por mes y año')
-        print('\n9 - Para procesar xls a csv\n')
+        print('3 - Para procesar xls a csv')
+        print('\n9 - Para sacar datos de la web\n')
         hacer = input('0 - Para salir: ')
         if hacer == '0':
             return()
@@ -255,8 +316,10 @@ def main():
             introducir_datos(conn, cursor)
         elif hacer == '2':
             dias_por_agente(cursor)
-        elif hacer == '9':
+        elif hacer == '3':
             crear_csv(cursor)
+        elif hacer == '9':
+            sacar_datos_web()
 
 
 if __name__ == "__main__":
