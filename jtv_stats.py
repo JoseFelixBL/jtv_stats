@@ -3,11 +3,20 @@ import sys
 import csv
 import pandas as pd
 import os
-# If you need some kind of interaction with the page, use Selenium.
-import selenium
 from time import sleep
 from datetime import datetime
 from datetime import timedelta
+# If you need some kind of interaction with the page, use Selenium.
+from selenium import webdriver
+from selenium.webdriver import Firefox
+from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support.expected_conditions import presence_of_element_located
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.firefox.service import Service
+from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
+# from webdriver_manager.firefox import FirefoxDriverManager
 
 
 def check_fecha(fecha) -> str:
@@ -292,13 +301,101 @@ def d_ini_d_fin(aaaa, mm):
         return(ini, fin)
 
 
-def sacar_datos_web():
+def sacar_datos_web(cursor):
     """Saca los datos de la web para procesarlos."""
     aaaa, mm = ano_mes()
     d_ini, d_fin = d_ini_d_fin(aaaa, mm)
+    programa_id, monitor, salida = select_programa(cursor)
+    print(f'después de select programa {programa_id} {monitor} {salida} ===============')
 
-    for dd in range(int(d_ini), int(d_fin)+1):
-        print(f'{dd:02}-{mm}-{aaaa}')
+    # https://developer.mozilla.org/en-US/docs/Web/WebDriver
+    # https://github.com/mozilla/geckodriver/releases/
+    # usar geckodriver-v0.32.0-win32.zip 
+    # Asignar el driver de Chrome y abrir la pg. web requerida
+    # driver = webdriver.Chrome()
+
+    # options = Options()
+    # options.binary_location = r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"
+    # driver = webdriver.Firefox(options=options, executable_path="C:/location/to/geckodriver.exe")
+    # with webdriver.Firefox(options=options, executable_path="G:/Workspace/jtv_stats/geckodriver.exe") as driver:
+
+    profile_path = r'C:\Users\José\AppData\Roaming\Mozilla\Firefox\Profiles\jwbt8302.default-1596351137250'
+    # default_profile = FirefoxProfile(profile_path)
+    options=Options()
+    options.set_preference('profile', profile_path)
+    options.binary_location = r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"
+    service = Service(r'G:/Workspace/jtv_stats/geckodriver.exe')
+    with Firefox(service=service, options=options) as driver:
+        wait = WebDriverWait(driver, 10)
+        driver.get('https://nstat.telemedia.hu/jeweladmin/multioption/monitor/')
+
+        # Dar tiempo para poner usuario y password
+        sleep(15)
+
+        for dia in range(int(d_ini), int(d_fin) + 1):
+            # Preparar fecha a procesar
+            fecha = '{:s}-{:02d}-{:02d}'.format(aaaa, int(mm), dia)
+            fch = '{:s}{:02d}{:02d}'.format(aaaa, int(mm), dia)
+            buscar = monitor + ' - ' + fecha
+            print('La fecha es: ' + fecha)
+
+            # Poner la fecha
+            # i_day = driver.find_element_by_xpath('//*[@id="day"]')
+            # i_day = driver.find_element_by_name("day")
+            i_day = driver.find_element(By.NAME, "day")
+            i_day.clear()
+            i_day.send_keys(fecha)
+            sleep(1)
+            i_day.send_keys(Keys.RETURN)
+            sleep(1)
+            i_day.send_keys(Keys.RETURN)
+            sleep(5)
+
+            # Hacer click en el buscador de fechas
+            # i_cal = driver.find_element_by_xpath('//*[@id="ui-datepicker-div"]')
+            # i_cal.click()
+            # sleep(2)
+
+            #Lista de shows
+            # i_show = driver.find_element_by_xpath('//*[@id="shows"]')
+            # i_opciones = i_show.find_elements_by_tag_name('option')
+            i_show = driver.find_element(By.XPATH, '//*[@id="shows"]')
+            i_opciones = i_show.find_elements(By.TAG_NAME, 'option')
+            no_data = True
+
+            # Buscar el show de la fecha
+            for op in i_opciones:
+                # if fecha in op.text:
+                if buscar in op.text:
+                    no_data = False
+                    i_op = op
+                    print(op.text + ' encontrado.')
+                    break
+            if no_data :
+                print ('---------- ' + buscar + ' ----no encontrado.')
+                continue
+            i_op.click()
+            sleep(2)
+
+            # Sacar las estadísticas
+            # i_list = driver.find_element_by_xpath('//*[@id="list"]')
+            i_list = driver.find_element(By.XPATH, '//*[@id="list"]')
+            i_list.click()
+            print("============= le he dado al list.")
+            sleep(2)
+
+            # Exportar las estadísticas...
+            # están es el <div id="calls">
+            # i_export = driver.find_element_by_xpath('//*[@id="export_to_excel"]')
+            i_export = driver.find_element(By.XPATH, '//*[@id="export_to_excel"]')
+            print("============= encontré 'export_to_excel'.")
+            i_export.click()
+            # ...y Dar tiempo para cerrar la ventana emergente (En Chrome, y en Firefox dar a guardar el fichero)
+            sleep(3)
+
+    sleep(8)
+    driver.close()
+
 
 
 def main():
@@ -306,7 +403,7 @@ def main():
 
     while True:
         print('\n1 - Para introducir datos')
-        print('2 - Para número de dias por agente por mes y año')
+        print('2 - Para número de días por agente por mes y año')
         print('3 - Para procesar xls a csv')
         print('\n9 - Para sacar datos de la web\n')
         hacer = input('0 - Para salir: ')
@@ -319,7 +416,7 @@ def main():
         elif hacer == '3':
             crear_csv(cursor)
         elif hacer == '9':
-            sacar_datos_web()
+            sacar_datos_web(cursor)
 
 
 if __name__ == "__main__":
