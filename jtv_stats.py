@@ -127,9 +127,11 @@ def obtener_datos_de_csv(prog):
             # prog
             valores.append((ff[0], hh[0], cc[0], dd[0], ss[0], vv[0], ll[0], rr[0], prog))
         return(valores)
-    
+
+
 def db_insert(conn, cursor, datos):
     """Ejecuta el INSERT en la DB"""
+    # Corregir el INSERT poniendo la tabla adecuada: llamadas vs. llamadas_copy
     _INSERT = """
         INSERT IGNORE INTO llamadas_copy (fecha,  hora, llamante, dur, station, voice_file,
             log_name, resultado, programa_id
@@ -150,16 +152,17 @@ def introducir_datos(conn, cursor):
 
 
 def filtros_dias_agente(programa_id):
-    aaaa = '2022'
-    mm = '10'
+    """Preparar los parámetros para filtrar los datos de la consulta de días por agente"""
+    aaaa, mm = ano_mes()
     return(aaaa, mm, programa_id)
 
 
 def dias_por_agente(cursor):
+    """Consulta de días trabajados por agente"""
     _SELECT =   """SELECT log_name AS nombre, COUNT(fecha) AS n_dias
                         FROM ( 
                             SELECT DISTINCT log_name, fecha
-                                FROM llamadas 
+                                FROM llamadas
                             WHERE YEAR(fecha) = ? AND MONTH(fecha) = ? 
                             AND programa_id = ?
                         ) table_alias
@@ -191,20 +194,23 @@ def check_filename(file_name):
 
 
 def ano_mes():
+    """Permite seleccionar el año y mes a ser procesado"""
     while True:
-        mm = input('Escriba el mes (1-12) para el que quiere las estadísticas: ')
+        mm = input('Escriba el mes (1-12) que desea procesar: ')
         if int(mm) not in range(1,13):
             continue
         mm = f'{int(mm):02d}'
 
-        aaaa = input('Escriba el año para el que quiere las estadísticas: ')
+        aaaa = input('Escriba el año que desea procesar: ')
         if int(aaaa) not in range(2017,2050):
             continue
 
-        return(aaaa+mm)
+        return(aaaa, mm)
 
 
 def crear_csv(cursor):
+    """Crea el fichero CSV que será usado para actualizar la DB.
+    El nombre del fichero se compone de '{aaaa}{mm} {salida} to_access.csv'"""
     # para obtener el PATH al OneDrive en Windows: os.getenv('OneDrive')
     # print('OneDrive: ' + os.getenv('OneDrive'))
 
@@ -214,13 +220,8 @@ def crear_csv(cursor):
         print('\t'+file)
     print('END listdir.\n')
     """
-
-    # programa_id, monitor, salida = select_programa(cursor)
     programa_id, monitor, salida = select_programa(cursor)
-    # monitor = 'NOVA TV'
-    # salida = 'kk'
-
-    aaaa_mm = ano_mes()
+    aaaa, mm = ano_mes()
 
     lista_df = list()
     for file in os.listdir():
@@ -237,7 +238,7 @@ def crear_csv(cursor):
 
     # new_df.to_csv(os.path.join(base_dir, csv_dir, csv_file), sep=';', index=False)
     csv_file = 'to_access.csv'
-    new_df.to_csv(f'{aaaa_mm} {salida} {csv_file}', sep=';', index=False)
+    new_df.to_csv(f'{aaaa}{mm} {salida} {csv_file}', sep=';', index=False)
 
 
 def main():
