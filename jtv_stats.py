@@ -1,6 +1,8 @@
 import mariadb
 import sys
 import csv
+import pandas as pd
+import os
 
 
 def check_fecha(fecha) -> str:
@@ -85,13 +87,21 @@ def select_programa(cursor):
         print('==\t'+'='*25+ '\t'+ '='*15+ '\t'+ '='*8)
 
         programas = []
+        monitor = dict()
+        salida = dict()
+
         for row in db_select(cursor, _SELECT):
             print(f'{row[0]}\t{row[1]:25}\t{row[2]:15}\t{row[3]}')
             programas.append(str(row[0]))
+            monitor[str(row[0])] = row[2]
+            salida[str(row[0])] = row[3]
 
         prog = input('Por favor seleccione un ID de programa de la lista:')
         if prog in programas:
-            return(prog)
+            sal = salida[prog]
+            if salida[prog] == None:
+                sal = ''
+            return(prog, monitor[prog], sal)
 
 
 def obtener_datos_de_csv(prog):
@@ -134,7 +144,7 @@ def db_insert(conn, cursor, datos):
 
 
 def introducir_datos(conn, cursor):
-    programa_id = select_programa(cursor)
+    programa_id, _, _ = select_programa(cursor)
     datos_a_insertar = obtener_datos_de_csv(programa_id)
     db_insert(conn, cursor, datos_a_insertar)
 
@@ -155,7 +165,7 @@ def dias_por_agente(cursor):
                         ) table_alias
                         GROUP BY nombre
                 """
-    programa_id = select_programa(cursor)
+    programa_id, _, _ = select_programa(cursor)
     filtros = filtros_dias_agente(programa_id)
 
     print('%-16s %s' % ('Agente', 'Días'))
@@ -165,12 +175,78 @@ def dias_por_agente(cursor):
     print()
 
     
+def check_filename(file_name):
+    """Check if file name is correct, i.e. starts with numbers
+    and is >= 20180927, files before that date have different format"""
+    # Check if file is csv
+    if not file_name.lower().endswith('.xlsx'):
+        return False
+
+    # Check if filename starts with numbers.
+    inicio = file_name.split(sep=' ')[0]
+    if not inicio.isnumeric():
+        return False
+
+    return True
+
+
+def ano_mes():
+    while True:
+        mm = input('Escriba el mes (1-12) para el que quiere las estadísticas: ')
+        if int(mm) not in range(1,13):
+            continue
+        mm = f'{int(mm):02d}'
+
+        aaaa = input('Escriba el año para el que quiere las estadísticas: ')
+        if int(aaaa) not in range(2017,2050):
+            continue
+
+        return(aaaa+mm)
+
+
+def crear_csv(cursor):
+    # para obtener el PATH al OneDrive en Windows: os.getenv('OneDrive')
+    # print('OneDrive: ' + os.getenv('OneDrive'))
+
+    # Para listar un directorio os.listdir()
+    """print('START listdir:')
+    for file in os.listdir():
+        print('\t'+file)
+    print('END listdir.\n')
+    """
+
+    # programa_id, monitor, salida = select_programa(cursor)
+    programa_id, monitor, salida = select_programa(cursor)
+    # monitor = 'NOVA TV'
+    # salida = 'kk'
+
+    aaaa_mm = ano_mes()
+
+    lista_df = list()
+    for file in os.listdir():
+        if not check_filename(file):
+            continue
+        # lista_df.append(pd.read_excel(os.path.join(full_xlsx_dir, file)))
+        lista_df.append(pd.read_excel(file))
+
+    new_df = pd.concat(lista_df, ignore_index=True)
+
+    cols = new_df.columns
+    if 'CC' in cols:
+        new_df = new_df.drop("CC", axis=1)
+
+    # new_df.to_csv(os.path.join(base_dir, csv_dir, csv_file), sep=';', index=False)
+    csv_file = 'to_access.csv'
+    new_df.to_csv(f'{aaaa_mm} {salida} {csv_file}', sep=';', index=False)
+
+
 def main():
     conn, cursor = db_connect()
 
     while True:
-        print('1 - Para introducir datos')
+        print('\n1 - Para introducir datos')
         print('2 - Para número de dias por agente por mes y año')
+        print('\n9 - Para procesar xls a csv\n')
         hacer = input('0 - Para salir: ')
         if hacer == '0':
             return()
@@ -178,6 +254,8 @@ def main():
             introducir_datos(conn, cursor)
         elif hacer == '2':
             dias_por_agente(cursor)
+        elif hacer == '9':
+            crear_csv(cursor)
 
 
 if __name__ == "__main__":
