@@ -3,9 +3,11 @@ import sys
 import csv
 import pandas as pd
 import os
+import shutil
 from time import sleep
 from datetime import datetime
 from datetime import timedelta
+from pathlib import Path
 # If you need some kind of interaction with the page, use Selenium.
 from selenium import webdriver
 from selenium.webdriver import Firefox
@@ -94,8 +96,9 @@ def db_select(cursor, _SQL, valores = ()):
 
 def select_programa(cursor):
     """Selecciona el programa de la lista de programas activos"""
-    _SELECT = """SELECT id, nombre_excel, nombre_monitor, nombre_salida 
+    _SELECT = """SELECT id, nombre_excel, nombre_monitor, nombre_salida, directorio 
                 FROM programas WHERE activo = 1"""
+
     while True:
         print('ID\t%-25s\t%-15s\t%s' % ('Programa', 'Monitor', 'Salida'))
         print('==\t'+'='*25+ '\t'+ '='*15+ '\t'+ '='*8)
@@ -103,19 +106,24 @@ def select_programa(cursor):
         programas = []
         monitor = dict()
         salida = dict()
+        directorio = dict()
 
         for row in db_select(cursor, _SELECT):
-            print(f'{row[0]}\t{row[1]:25}\t{row[2]:15}\t{row[3]}')
+            print(f'{row[0]}\t{row[1]:25}\t{row[2]:15}\t{row[3]}\t{row[4]}')
             programas.append(str(row[0]))
             monitor[str(row[0])] = row[2]
             salida[str(row[0])] = row[3]
+            directorio[str(row[0])] = row[4]
 
         prog = input('Por favor seleccione un ID de programa de la lista:')
         if prog in programas:
             sal = salida[prog]
             if salida[prog] == None:
                 sal = ''
-            return(prog, monitor[prog], sal)
+            dir = directorio[prog]
+            if directorio[prog] == None:
+                dir = ''
+            return(prog, monitor[prog], sal, dir)
 
 
 def obtener_datos_de_csv(prog):
@@ -160,7 +168,7 @@ def db_insert(conn, cursor, datos):
 
 
 def introducir_datos(conn, cursor):
-    programa_id, _, _ = select_programa(cursor)
+    programa_id, _, _, _ = select_programa(cursor)
     datos_a_insertar = obtener_datos_de_csv(programa_id)
     db_insert(conn, cursor, datos_a_insertar)
 
@@ -301,12 +309,127 @@ def d_ini_d_fin(aaaa, mm):
         return(ini, fin)
 
 
+def create_dir(name):
+    """Comprobar que existe el directorio, y si no, crearlo."""
+    dir = Path(name)
+    if not dir.is_dir():
+        dir.mkdir()
+
+def check_directorios(dir_name, servicio, salida):
+    """Comprobar que existe el directorio de servicio donde se guardan las STATS."""
+    anchor = Path(os.getenv('OneDrive'))
+    relative = Path(r'Documentos\Multiopción\TelemediaHU\Multioption Stats')
+
+    # Directorio de almacén de los .XLSX por servicio
+    create_dir(anchor.joinpath(relative, dir_name))
+
+    # Directorio de procesado de .XLSX para crear CSV
+    dir_procesado = anchor.joinpath(relative, r'automation\JoyasSQL\PruPandas')
+    create_dir(dir_procesado)
+    patron = f'???????? {salida} multioption_monitor_*.xlsx'
+    if salida == '':
+        patron = f'???????? multioption_monitor_*.xlsx'
+    for fichero in dir_procesado.glob(patron):
+        print(fichero)
+        os.remove(fichero)
+
+
+    # Directorio de CSV
+    create_dir(anchor.joinpath(relative, r'automation\JoyasSQL\DatosCSV'))
+
+    # Directorio de OLD_CSV_NO_BORRAR
+    create_dir(anchor.joinpath(relative, r'automation\JoyasSQL\OLD_CSV_NO_BORRAR', f'CSV {servicio}'))
+
+    # Directorio de descargas _OLD_multioption_monitor
+    create_dir(anchor.parent.joinpath('Downloads', '_OLD_multioption_monitor'))
+
+    # Borrar ficheros "multioption_monitor_*"
+    for mul_mon in Path(anchor.parent.joinpath('Downloads')).glob('multioption_monitor_*.xls'):
+        print(mul_mon)
+        os.remove(mul_mon)
+
+
+def mover_a_almacen(dir_name, fch):
+    """Comprobar que existe el directorio de servicio donde se guardan las STATS."""
+    anchor = Path(os.getenv('OneDrive'))
+    relative = Path(r'Documentos\Multiopción\TelemediaHU\Multioption Stats')
+    suffix = f'.xlsx'
+
+    # Directorio de almacén de los .XLSX por servicio
+    dir_almacen = anchor.joinpath(relative, dir_name)
+
+    # Fichero "multioption_monitor_*"
+    for mul_mon in Path(anchor.parent.joinpath('Downloads')).glob('multioption_monitor_*.xls'):
+        final_name = f'{fch} {mul_mon.stem}{suffix}'
+        final_path = mul_mon.rename(dir_almacen.joinpath(final_name))
+        shutil.copy2(final_path, anchor.joinpath(relative, r'automation\JoyasSQL\PruPandas'))
+
+
+def pruebas_ficheros():
+    """Pruebas de funciones de ficheros, directorios y cambiar nombres."""
+    """ Con pathlib.Path:
+    exists()
+    glob(pattern) iterates over this subtree and yields all existing files matching pattern
+    is_dir()
+    is_file()
+    iterdir() iterates over all files of this directory
+    mkdir()
+    rename(target)
+
+    Class methods:
+    cwd()
+    Recordar que también se pueden usar métodos o funciones de os, por ejemplo os.getcwd()
+
+    Methods from Purepath:
+    match()
+    with_name(name) sustituye TODO el nombre con name
+    with_stem(stem) sustituye el nombre (stem), no el sufijo
+    with suffix(suffix) sustituye el sufijo por otro (tiene que empezar por ".")
+
+    joinpath(*args)
+    """
+
+    # C:\Users\José\Downloads\multioption_monitor_08_53_14.xls
+    p = Path(r'C:\Users\José\Downloads')
+    y_n = "no "
+    if p.is_dir():
+        y_n = ""
+    print(f'{p} {y_n}es un directorio.')
+
+    y_n = "no "
+    if p.is_file():
+        y_n = ""
+    print(f'{p} {y_n}es un fichero.')
+
+    print(f'Yo estoy en {Path.cwd()}')
+
+    for f in p.glob('multioption_monitor_*'):
+        print(f)
+
+    one_drive = Path(os.getenv('OneDrive'))
+    print(f'{one_drive}')
+    print(f'{one_drive.parent}')
+ 
+    r_dir_xlsx = Path(r'Documentos\Multiopción\TelemediaHU\Multioption Stats\automation\JoyasSQL\PruPandas')
+    a_dir_xlsx = one_drive.joinpath(r_dir_xlsx)
+    print(f'{a_dir_xlsx}')
+
+    f = Path(r'C:\Users\José\Downloads\multioption_monitor_08_53_14.xls')
+    print(f'{f}')
+    kk = 'pepito'
+    print(f'with_name({kk}) : {f.with_name(kk)}')
+    print(f'with_stem({kk}) : {f.with_stem(kk)}')
+    print(f'with_suffix({kk}) : {f.with_suffix(f".{kk}")}')
+    create_dir()
+
+
 def sacar_datos_web(cursor):
     """Saca los datos de la web para procesarlos."""
     aaaa, mm = ano_mes()
     d_ini, d_fin = d_ini_d_fin(aaaa, mm)
-    programa_id, monitor, salida = select_programa(cursor)
-    print(f'después de select programa {programa_id} {monitor} {salida} ===============')
+    programa_id, monitor, salida, dir_servicio = select_programa(cursor)
+
+    check_directorios(dir_servicio, monitor, salida)
 
     # https://developer.mozilla.org/en-US/docs/Web/WebDriver
     # https://github.com/mozilla/geckodriver/releases/
@@ -393,6 +516,8 @@ def sacar_datos_web(cursor):
             # ...y Dar tiempo para cerrar la ventana emergente (En Chrome, y en Firefox dar a guardar el fichero)
             sleep(3)
 
+            mover_a_almacen(dir_servicio, fch)
+
     sleep(8)
     driver.close()
 
@@ -400,6 +525,8 @@ def sacar_datos_web(cursor):
 
 def main():
     conn, cursor = db_connect()
+
+    # pruebas_ficheros()
 
     while True:
         print('\n1 - Para introducir datos')
