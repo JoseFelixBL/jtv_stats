@@ -27,7 +27,6 @@ def check_fecha(fecha) -> str:
     Outgoing fecha: 2017/08/19"""
     # CHECK: ¿Existe funciones de fecha para hacer esto?
     if len(fecha) >= 9 and len(fecha) <= 10:
-        # return fecha
         separador = '/'
         encontrado = False
         for car in fecha:
@@ -76,7 +75,6 @@ def db_connect():
                 'database': 'joyastv', }
 
     try:
-        # return mariadb.connect(**dbconfig)
         conn = mariadb.connect(**dbconfig)
         cursor = conn.cursor()
         return (conn, cursor)
@@ -95,7 +93,13 @@ def db_select(cursor, _SQL, valores = ()):
 
 
 def select_programa(cursor):
-    """Selecciona el programa de la lista de programas activos"""
+    """Selecciona el programa de la lista de programas activos
+        retorna 4 campos: 
+        - ID del programa, 
+        - Nombre que sale en el MONITOR
+        - Nombre del programa (SALIDA) a agregar en el nombre del fichero de Excel
+        - Nombre del DIRECTORIO donde se guarda"""
+
     _SELECT = """SELECT id, nombre_excel, nombre_monitor, nombre_salida, directorio 
                 FROM programas WHERE activo = 1"""
 
@@ -116,7 +120,7 @@ def select_programa(cursor):
             salida[str(row[0])] = row[3]
             directorio[str(row[0])] = row[4]
 
-        prog = input('Por favor seleccione un ID de programa de la lista:')
+        prog = input('Por favor seleccione un ID de programa de la lista: ')
         if prog in programas:
             sal = salida[prog]
             if salida[prog] == None:
@@ -150,16 +154,13 @@ def obtener_datos_de_csv(prog, salida):
     # Directorios
     abs_xls_dir, abs_stats_dir, abs_csv_dir, abs_downloads_dir = directorios()
 
-    # csv_file = '202209 to_access.csv'
-    # csv_file = anchor.joinpath(relative, csv_dir, f'{aaaa}{mm} {salida}to_access.csv')
-    # csv_file = abs_csv_dir.joinpath(f'{aaaa}{mm} {salida}to_access.csv')
-
     if salida != '':
         salida = f'{salida} '
     patron = f'?????? {salida}to_access.csv'
 
     valores = []
     for csv_file in abs_csv_dir.glob(patron):
+        print(f'csv_file: {csv_file}')
         with open(csv_file, 'r', encoding="cp1252") as llamadas:
             reader = csv.DictReader(llamadas, delimiter=';')
             # A veces el primer campo tiene caraceres raros en el título...
@@ -173,7 +174,7 @@ def obtener_datos_de_csv(prog, salida):
                 vv = row['Voice file'],
                 ll = row['Login name'],
                 rr = row['Call result'],
-                # prog
+                # prog es el último campo necesario
                 valores.append((ff[0], hh[0], cc[0], dd[0], ss[0], vv[0], ll[0], rr[0], prog))
     return(valores)
 
@@ -195,8 +196,11 @@ def db_insert(conn, cursor, datos):
 
 
 def introducir_datos(conn, cursor):
+    print('select_programa')
     programa_id, _, salida, _ = select_programa(cursor)
+    print('obtener_datos_de_csv')
     datos_a_insertar = obtener_datos_de_csv(programa_id, salida)
+    print('db_insert')
     db_insert(conn, cursor, datos_a_insertar)
 
 
@@ -211,7 +215,7 @@ def dias_por_agente(cursor):
     _SELECT =   """SELECT log_name AS nombre, COUNT(fecha) AS n_dias
                         FROM ( 
                             SELECT DISTINCT log_name, fecha
-                                FROM llamadas
+                                FROM llamadas_copy
                             WHERE YEAR(fecha) = ? AND MONTH(fecha) = ? 
                             AND programa_id = ?
                         ) table_alias
@@ -225,21 +229,6 @@ def dias_por_agente(cursor):
     for row in db_select(cursor, _SELECT, filtros):
         print(f'{row[0]:16} {row[1]:4}')
     print()
-
-    
-def check_filename(file_name):
-    """Check if file name is correct, i.e. starts with numbers
-    and is >= 20180927, files before that date have different format"""
-    # Check if file is csv
-    if not file_name.lower().endswith('.xlsx'):
-        return False
-
-    # Check if filename starts with numbers.
-    inicio = file_name.split(sep=' ')[0]
-    if not inicio.isnumeric():
-        return False
-
-    return True
 
 
 def ano_mes():
@@ -260,10 +249,6 @@ def ano_mes():
 def crear_csv(cursor):
     """Crea el fichero CSV que será usado para actualizar la DB.
     El nombre del fichero se compone de '{aaaa}{mm} {salida} to_access.csv'"""
-    # para obtener el PATH al OneDrive en Windows: os.getenv('OneDrive')
-    # print('OneDrive: ' + os.getenv('OneDrive'))
-
-    # Para listar un directorio os.listdir()
     programa_id, monitor, salida, _ = select_programa(cursor)
     aaaa, mm = ano_mes()
 
@@ -275,27 +260,29 @@ def crear_csv(cursor):
     # csv_dir = Path(r'automation\JoyasSQL\DatosCSV')
 
     lista_df = list()
-    # for file in os.listdir(anchor.joinpath(relative, xls_dir)):
-    for file in os.listdir(abs_xls_dir):
-        if not check_filename(file):
-            continue
-        # lista_df.append(pd.read_excel(os.path.join(full_xlsx_dir, file)))
+    if salida != '':
+        salida = f'{salida} '
+
+    patron = f'{aaaa}{mm}?? {salida}multioption_monitor_*.xlsx'
+    # print(f'PATRON; {patron}')
+
+    vacio = True
+    for file in abs_xls_dir.glob(patron):
+        vacio = False
         # Concatenar en lista_df todos los Excel
-        lista_df.append(pd.read_excel(file))
+        # print(f'===> Fichero a concatenar: {file} <===')
+        lista_df.append(pd.read_excel(abs_xls_dir.joinpath(file)))
 
     # Crea un DataFrame con todos los registros
+    if vacio:
+        print('WARNING: Lista de ficheros XLSX a concatenar vacía')
+        return
     new_df = pd.concat(lista_df, ignore_index=True)
 
     cols = new_df.columns
     if 'CC' in cols:
         new_df = new_df.drop("CC", axis=1)
 
-    # new_df.to_csv(os.path.join(base_dir, csv_dir, csv_file), sep=';', index=False)
-     # csv_file = 'to_access.csv'
-    # new_df.to_csv(f'{aaaa}{mm} {salida}to_access.csv', sep=';', index=False)
-    if salida != '':
-        salida = f'{salida} '
-    # csv_file = anchor.joinpath(relative, csv_dir, f'{aaaa}{mm} {salida}to_access.csv')
     csv_file = abs_csv_dir.joinpath(f'{aaaa}{mm} {salida}to_access.csv')
     # Guardar el DataFrame como un CSV
     new_df.to_csv(csv_file, sep=';', index=False)
@@ -353,10 +340,9 @@ def create_dir(name):
     if not dir.is_dir():
         dir.mkdir()
 
+
 def check_directorios(stat_dir, servicio, salida):
     """Comprobar que existe el directorio de servicio donde se guardan las STATS."""
-    # anchor = Path(os.getenv('OneDrive'))
-    # relative = Path(r'Documentos\Multiopción\TelemediaHU\Multioption Stats')
     
     # Directorios
     abs_xls_dir, abs_stats_dir, abs_csv_dir, abs_downloads_dir = directorios()
@@ -365,38 +351,39 @@ def check_directorios(stat_dir, servicio, salida):
     create_dir(abs_stats_dir)
 
     # Directorio de procesado de .XLSX para crear CSV
-    # dir_procesado = anchor.joinpath(relative, r'automation\JoyasSQL\PruPandas')
-    # create_dir(dir_procesado)
     create_dir(abs_xls_dir)
     # Limpiar directorio de procesado de ficheros viejos del 'servicio'
     # no sé si será bueno... puede que quiera acumular ficheros y procesarlos otro día...
     patron = f'???????? {salida} multioption_monitor_*.xlsx'
     if salida == '':
         patron = f'???????? multioption_monitor_*.xlsx'
+    anteriores = False
     for fichero in abs_xls_dir.glob(patron):
-        # print(fichero)
+        print(fichero)
+        anteriores = True
         os.remove(fichero)
+    if anteriores:
+        if input('\nHe encontrado ficheros anteriores, ¿quiere borrarlos? (s/n): ') == 's':
+            for fichero in abs_xls_dir.glob(patron):
+                os.remove(fichero)
+           
 
     # Directorio de CSV
-    # create_dir(anchor.joinpath(relative, r'automation\JoyasSQL\DatosCSV'))
     create_dir(abs_csv_dir)
 
     # Directorio de OLD_CSV_NO_BORRAR
-    # create_dir(anchor.joinpath(relative, r'automation\JoyasSQL\OLD_CSV_NO_BORRAR', f'CSV {servicio}'))
     create_dir(abs_stats_dir.joinpath(r'automation\JoyasSQL\OLD_CSV_NO_BORRAR', f'CSV {servicio}'))
 
     # Directorio de descargas _OLD_multioption_monitor
-    #create_dir(anchor.parent.joinpath('Downloads', '_OLD_multioption_monitor'))
     create_dir(abs_downloads_dir.joinpath('_OLD_multioption_monitor'))
 
     # Borrar ficheros "multioption_monitor_*" de Downloads antes de empezar a bajar de la web
-    # for mul_mon in Path(anchor.parent.joinpath('Downloads')).glob('multioption_monitor_*.xls'):
     for mul_mon in abs_downloads_dir.glob('multioption_monitor_*.xls'):
         print(mul_mon)
         os.remove(mul_mon)
 
 
-def mover_a_almacen(dir_name, fch):
+def mover_a_almacen(dir_name, fch, salida):
     """Comprobar que existe el directorio de servicio donde se guardan las STATS."""
     anchor = Path(os.getenv('OneDrive'))
     relative = Path(r'Documentos\Multiopción\TelemediaHU\Multioption Stats')
@@ -406,15 +393,14 @@ def mover_a_almacen(dir_name, fch):
     abs_xls_dir, abs_stats_dir, abs_csv_dir, abs_downloads_dir = directorios()
 
     # Directorio de almacén de los .XLSX por servicio
-    # dir_almacen = anchor.joinpath(relative, dir_name)
     dir_almacen = abs_stats_dir.joinpath(dir_name)
 
     # Fichero "multioption_monitor_*"
-    # for mul_mon in Path(anchor.parent.joinpath('Downloads')).glob('multioption_monitor_*.xls'):
     for mul_mon in abs_downloads_dir.glob('multioption_monitor_*.xls'):
-        final_name = f'{fch} {mul_mon.stem}{suffix}'
+        final_name = f'{fch} {salida} {mul_mon.stem}{suffix}'
+        if salida == '':
+            final_name = f'{fch} {mul_mon.stem}{suffix}'
         final_path = mul_mon.rename(dir_almacen.joinpath(final_name))
-        # shutil.copy2(final_path, anchor.joinpath(relative, r'automation\JoyasSQL\PruPandas'))
         shutil.copy2(final_path, abs_xls_dir)
 
 
@@ -443,6 +429,16 @@ def pruebas_ficheros():
     """
 
     # C:\Users\José\Downloads\multioption_monitor_08_53_14.xls
+    one_drive = Path(os.getenv('OneDrive'))
+    r_dir_xlsx = Path(r'Documentos\Multiopción\TelemediaHU\Multioption Stats\automation\JoyasSQL\PruPandas')
+    a_dir_xlsx = one_drive.joinpath(r_dir_xlsx)
+    print(f'{a_dir_xlsx}')
+
+    for f in a_dir_xlsx.glob('*multioption_monitor_*'):
+        print(f)
+
+    return
+
     p = Path(r'C:\Users\José\Downloads')
     y_n = "no "
     if p.is_dir():
@@ -473,7 +469,6 @@ def pruebas_ficheros():
     print(f'with_name({kk}) : {f.with_name(kk)}')
     print(f'with_stem({kk}) : {f.with_stem(kk)}')
     print(f'with_suffix({kk}) : {f.with_suffix(f".{kk}")}')
-    create_dir()
 
 
 def sacar_datos_web(cursor):
@@ -487,13 +482,6 @@ def sacar_datos_web(cursor):
     # https://developer.mozilla.org/en-US/docs/Web/WebDriver
     # https://github.com/mozilla/geckodriver/releases/
     # usar geckodriver-v0.32.0-win32.zip 
-    # Asignar el driver de Chrome y abrir la pg. web requerida
-    # driver = webdriver.Chrome()
-
-    # options = Options()
-    # options.binary_location = r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"
-    # driver = webdriver.Firefox(options=options, executable_path="C:/location/to/geckodriver.exe")
-    # with webdriver.Firefox(options=options, executable_path="G:/Workspace/jtv_stats/geckodriver.exe") as driver:
 
     profile_path = r'C:\Users\José\AppData\Roaming\Mozilla\Firefox\Profiles\jwbt8302.default-1596351137250'
     # default_profile = FirefoxProfile(profile_path)
@@ -501,8 +489,9 @@ def sacar_datos_web(cursor):
     options.set_preference('profile', profile_path)
     options.binary_location = r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"
     service = Service(r'G:/Workspace/jtv_stats/geckodriver.exe')
+
     with Firefox(service=service, options=options) as driver:
-        wait = WebDriverWait(driver, 10)
+        wait = WebDriverWait(driver, 15)
         driver.get('https://nstat.telemedia.hu/jeweladmin/multioption/monitor/')
 
         # Dar tiempo para poner usuario y password
@@ -557,19 +546,19 @@ def sacar_datos_web(cursor):
             # i_list = driver.find_element_by_xpath('//*[@id="list"]')
             i_list = driver.find_element(By.XPATH, '//*[@id="list"]')
             i_list.click()
-            print("============= le he dado al list.")
+            # print("============= le he dado al list.")
             sleep(2)
 
             # Exportar las estadísticas...
             # están es el <div id="calls">
             # i_export = driver.find_element_by_xpath('//*[@id="export_to_excel"]')
             i_export = driver.find_element(By.XPATH, '//*[@id="export_to_excel"]')
-            print("============= encontré 'export_to_excel'.")
+            # print("============= encontré 'export_to_excel'.")
             i_export.click()
             # ...y Dar tiempo para cerrar la ventana emergente (En Chrome, y en Firefox dar a guardar el fichero)
             sleep(3)
 
-            mover_a_almacen(dir_servicio, fch)
+            mover_a_almacen(dir_servicio, fch, salida)
 
     sleep(8)
     driver.close()
@@ -582,11 +571,13 @@ def main():
     # pruebas_ficheros()
 
     while True:
-        print('1 - Para sacar datos de la web\n')
-        print('2 - Para procesar xls a csv')
-        print('3 - Para introducir datos')
-        print('5 - Para número de días por agente por mes y año')
-        hacer = input('¿Qué desea hacer?: ')
+        print('\n1 - Para sacar datos de la web.')
+        print('2 - Para procesar xls a csv.')
+        print('3 - Para introducir datos csv en la base de datos.')
+        print('5 - Para número de días por agente por mes y año.')
+        print('9 - TEST: PRUEBAS DE FICHEROS.')
+        print('\n0 - Para terminar.')
+        hacer = input('\n¿Qué desea hacer?: ')
         if hacer == '0':
             return()
         elif hacer == '1':
@@ -597,6 +588,8 @@ def main():
             introducir_datos(conn, cursor)
         elif hacer == '5':
             dias_por_agente(cursor)
+        elif hacer == '9':
+            pruebas_ficheros()
 
 
 if __name__ == "__main__":
