@@ -4,3 +4,4 @@ ve_jtv_stats/
 *.xlsx
 *.csv
 geckodriver*
+requirements.txt
