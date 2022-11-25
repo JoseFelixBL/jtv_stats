@@ -100,6 +100,8 @@ def db_connect() -> tuple:
 <class 'mariadb.connections.Connection'>
 >>> type(cursor)
 <class 'mariadb.cursors.Cursor'> """
+
+
 def db_select(cursor, _SQL:str, valores:tuple = ())->list:
     """Ejecutar un SELECT y retornar la lista de registros encontrados cursor.fetchall()"""
     if len(valores) == 0:
@@ -253,6 +255,39 @@ def dias_por_agente(cursor)->None:
     for row in db_select(cursor, _SELECT, filtros):
         print(f'{row[0]:16} {row[1]:4}')
     print()
+
+
+def media_por_agente(cursor)->None:
+    """Consulta la media de duración de llamadas atendidas por agente.
+    Salida por stdout."""
+
+    programa_id, _, _, _ = select_programa(cursor)
+    filtros = [programa_id]
+    print('\n1 - si quiere sacar los datos de un mes específico')
+    print('0 - si quiere los datos de toda la serie')
+    todo = True
+    select_fechas = ''
+    titulo = 'Datos para toda la serie'
+    if input('Elija: ') == '1':
+        todo = False
+        filtros = filtros_dias_agente(programa_id)
+        select_fechas = f'YEAR(fecha) = ? AND MONTH(fecha) = ? AND '
+        titulo = f'Datos para el {filtros[1]} de {filtros[0]}'
+
+    # print(type(filtros),filtros)
+    _SELECT = f"""SELECT log_name, SEC_TO_TIME( AVG(dur) DIV 1 ) AS dur_media, SUM(dur) AS tot_sec, COUNT(id) AS num_llamadas
+            FROM llamadas
+            WHERE {select_fechas} programa_id = ?
+            GROUP BY log_name
+            ORDER BY dur_media ASC
+        """
+    print('\n' + titulo)
+    print('%-16s %-10s %-14s %-12s' % ('Agente', 'dur_media', 'tot_sec', 'num_llamadas'))
+    print('='*16, '='*10, '='*14, '='*12)
+    for row in db_select(cursor, _SELECT, filtros):
+        print(f'{row[0]:16} {str(row[1]):10} {row[2]:14} {row[3]:12}')
+    print()
+   
 
 
 def ano_mes()->tuple:
@@ -528,7 +563,7 @@ def sacar_datos_web(cursor)->None:
             fecha = '{:s}-{:02d}-{:02d}'.format(aaaa, int(mm), dia)
             fch = '{:s}{:02d}{:02d}'.format(aaaa, int(mm), dia)
             buscar = monitor + ' - ' + fecha
-            print('La fecha es: ' + fecha)
+            print('La fecha es: ' + fecha + ' - ', end='')
 
             # Poner la fecha
             # i_day = driver.find_element_by_xpath('//*[@id="day"]')
@@ -563,7 +598,7 @@ def sacar_datos_web(cursor)->None:
                     print(op.text + ' encontrado.')
                     break
             if no_data :
-                print ('---------- ' + buscar + ' ----no encontrado.')
+                print ('-----------> NO ENCONTRADO.')
                 continue
             i_op.click()
             sleep(2)
@@ -657,9 +692,12 @@ def main()->None:
         print('\n1 - Para sacar datos de la web.')
         print('2 - Para procesar xls a csv.')
         print('3 - Para introducir datos csv en la base de datos.')
+        print()
         print('5 - Para número de días por agente por mes y año.')
-        print('9 - TEST: PRUEBAS DE FICHEROS.')
-        print('\n0 - Para terminar.')
+        print('6 - Para tiempo medio de atención por agente por mes y año.')
+        # print('9 - TEST: PRUEBAS DE FICHEROS.')
+        print()
+        print('0 - Para terminar.')
         hacer = input('\n¿Qué desea hacer?: ')
         if hacer == '0':
             return()
@@ -671,6 +709,8 @@ def main()->None:
             introducir_datos(conn, cursor)
         elif hacer == '5':
             dias_por_agente(cursor)
+        elif hacer == '6':
+            media_por_agente(cursor)
         elif hacer == '9':
             pruebas_ficheros()
 
