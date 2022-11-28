@@ -408,6 +408,7 @@ def check_directorios(stat_dir:str, servicio:str, salida:str)->None:
 
     # Directorio de almacén de los .XLSX por servicio
     create_dir(DIR_ABS_STATS)
+    create_dir(DIR_ABS_STATS.joinpath(stat_dir))
 
     # Directorio de procesado de .XLSX para crear CSV
     create_dir(DIR_ABS_XLSX)
@@ -458,7 +459,7 @@ def mover_a_almacen(dir_servicio:str, fch:str, salida:str)->None:
         final_name = f'{fch} {salida} {mul_mon.stem}{suffix}'
         if salida == '':
             final_name = f'{fch} {mul_mon.stem}{suffix}'
-        final_path = mul_mon.rename(dir_abs_almacen.joinpath(final_name))
+        final_path = Path(mul_mon).rename(Path(dir_abs_almacen, final_name))
         shutil.copy2(final_path, DIR_ABS_XLSX)
 
 
@@ -535,6 +536,7 @@ def sacar_datos_web(cursor)->None:
     d_ini, d_fin = d_ini_d_fin(aaaa, mm)
     programa_id, monitor, salida, dir_servicio = select_programa(cursor)
 
+    # prueba de la creación de directorios
     check_directorios(dir_servicio, monitor, salida)
 
     # https://developer.mozilla.org/en-US/docs/Web/WebDriver
