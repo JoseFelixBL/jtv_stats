@@ -557,6 +557,30 @@ def sacar_datos_web(cursor)->None:
         wait = WebDriverWait(driver, 15)
         driver.get('https://nstat.telemedia.hu/jeweladmin/multioption/monitor/')
 
+        """ 
+        # test focus & send_keys for user and password
+        sleep(7)
+        driver.find_element(By.LINK_TEXT, "Nombre de usuario").send_keys('supervisor')
+        driver.find_element(By.LINK_TEXT, "Contraseña").send_keys('multioption17')
+        sleep(2)
+        driver.find_element(By.LINK_TEXT, "Iniciar sesión").send_keys(Keys.RETURN)
+
+        Exception has occurred: UnexpectedAlertPresentException
+        Alert Text: None
+        Message: Dismissed user prompt dialog: Este sitio le pide que inicie sesión.
+        Stacktrace:
+        RemoteError@chrome://remote/content/shared/RemoteError.sys.mjs:8:8
+        WebDriverError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:182:5
+        UnexpectedAlertOpenError@chrome://remote/content/shared/webdriver/Errors.sys.mjs:487:5
+        GeckoDriver.prototype._handleUserPrompts@chrome://remote/content/marionette/driver.sys.mjs:2695:13
+        File "G:\Workspace\jtv_stats\jtv_stats.py", line 562, in sacar_datos_web
+            driver.find_element(By.LINK_TEXT, "Nombre de usuario").send_keys('supervisor')
+        File "G:\Workspace\jtv_stats\jtv_stats.py", line 713, in main
+            sacar_datos_web(cursor)
+        File "G:\Workspace\jtv_stats\jtv_stats.py", line 727, in <module>
+            main()
+        """
+
         # Dar tiempo para poner usuario y password
         sleep(15)
 
@@ -624,7 +648,7 @@ def sacar_datos_web(cursor)->None:
             mover_a_almacen(dir_servicio, fch, salida)
 
     sleep(8)
-    driver.close()
+    # driver.close()  # No hace falta, está incluido en el context manager 'WITH'
 
 
 
