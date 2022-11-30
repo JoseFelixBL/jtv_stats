@@ -715,7 +715,9 @@ def main()->None:
     # pruebas_ficheros()
 
     while True:
-        print('\n1 - Para sacar datos de la web.')
+        print('\n\nMenú')
+        print(50*'=')
+        print('1 - Para sacar datos de la web.')
         print('2 - Para procesar xls a csv.')
         print('3 - Para introducir datos csv en la base de datos.')
         print()
