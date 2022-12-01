@@ -256,6 +256,49 @@ def dias_por_agente(cursor)->None:
         print(f'{row[0]:16} {row[1]:4}')
     print()
 
+    _SELECT = f"""SELECT * FROM (
+        SELECT 'Año', 'Mes', 'Nombre', 'Agente', 'Programa', '€/día', 
+          CAST( 'Núm. Días' AS CHAR ), 'Total €'
+        UNION ALL
+        (
+            SELECT YEAR(llamadas.fecha) AS Año, MONTH(llamadas.fecha) AS Mes, 
+            agentes.nombre AS Nombre, agentes.log_name AS Agente, 
+            programas.nombre_monitor AS Programa, 
+            FORMAT( programas.factura_hora , 2, 'es_ES') AS '€/hora',
+            COUNT(DISTINCT fecha) AS 'Núm. días', 
+            FORMAT ( COUNT(DISTINCT fecha) * programas.factura_hora, 2, 'es_ES') AS 'Total €' 
+            FROM agentes 
+            INNER JOIN {DB_TABLE_LLAMADAS} ON llamadas.log_name = agentes.log_name
+            INNER JOIN grupos ON grupos.grupo = agentes.grupo
+            INNER JOIN programas ON programas.id = llamadas.programa_id
+            WHERE YEAR(llamadas.fecha) = ? AND MONTH(llamadas.fecha) = ?
+            AND llamadas.programa_id = ?
+            GROUP BY llamadas.log_name
+            ORDER BY grupos.grupo, llamadas.log_name
+        )
+    ) resulting_set
+    UNION (
+        SELECT '-----', '---', '-----', '-----', '-----', '-----', '-----', 
+        CAST( FORMAT ( SUM(kk) , 2, 'es_ES') AS CHAR)
+        FROM (
+            SELECT 
+            (COUNT(DISTINCT fecha) * programas.factura_hora ) AS kk
+            FROM agentes 
+            INNER JOIN llamadas ON llamadas.log_name = agentes.log_name
+            INNER JOIN grupos ON grupos.grupo = agentes.grupo
+            INNER JOIN programas ON programas.id = llamadas.programa_id
+            WHERE YEAR(llamadas.fecha) = ? AND MONTH(llamadas.fecha) = ?
+            AND llamadas.programa_id = ?
+            GROUP BY llamadas.log_name
+        ) tt
+    )
+    """
+    kk = []
+    kk = list(filtros) + list(filtros)
+    for row in db_select(cursor, _SELECT, kk):
+        print(f'{row[0]:5} {row[1]:4} {row[2]:20} {row[3]:10} {row[4]:16} {row[5]:7} {str(row[6]):>10} {row[7]:>10}')
+    print()
+
 
 def media_por_agente(cursor)->None:
     """Consulta la media de duración de llamadas atendidas por agente.
