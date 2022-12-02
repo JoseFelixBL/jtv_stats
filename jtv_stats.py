@@ -203,16 +203,13 @@ def obtener_datos_de_csv(prog:str, salida:str)->tuple:
     return(valores)
 
 
-def db_insert(conn, cursor, datos)->None:
+def db_insert(conn, cursor, _INSERT, datos='')->None:
     """Ejecuta el INSERT en la DB"""
-    # Corregir el INSERT poniendo la tabla adecuada: llamadas vs. llamadas_copy
-    _INSERT = f"""
-        INSERT IGNORE INTO {DB_TABLE_LLAMADAS} (fecha,  hora, llamante, dur, station, voice_file,
-            log_name, resultado, programa_id
-            ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
-        """
     try:
-        cursor.executemany(_INSERT, datos)
+        if datos == '':
+            cursor.execute(_INSERT)
+        else:
+            cursor.executemany(_INSERT, datos)
         print(f'Insertados {cursor.rowcount} registros')
     except mariadb.Error as e:
         print(f"Error: {e}")
@@ -221,12 +218,62 @@ def db_insert(conn, cursor, datos)->None:
 
 
 def introducir_datos(conn, cursor)->None:
-    print('select_programa')
+    # print('select_programa')
     programa_id, _, salida, _ = select_programa(cursor)
-    print('obtener_datos_de_csv')
+    # print('obtener_datos_de_csv')
     datos_a_insertar = obtener_datos_de_csv(programa_id, salida)
-    print('db_insert')
-    db_insert(conn, cursor, datos_a_insertar)
+    # print('db_insert')
+    _INSERT = f"""
+        INSERT IGNORE INTO {DB_TABLE_LLAMADAS} (fecha,  hora, llamante, dur, station, voice_file,
+            log_name, resultado, programa_id
+            ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+        """
+    db_insert(conn, cursor, _INSERT, datos_a_insertar)
+
+
+def agregar_agentes_a_fecha(conn, cursor, fecha, programa_id, agentes):
+    _INSERT = f"""INSERT INTO {DB_TABLE_LLAMADAS}
+        (fecha, hora, llamante, dur, log_name, resultado, programa_id)
+        SELECT '{fecha}', programas.hora_fin, 
+        '34000000000', 0, agentes.log_name, 
+        'Request for information without order', programas.id
+        FROM agentes, programas
+        WHERE programas.id = {programa_id}
+        AND agentes.log_name IN ( {agentes} )
+    """
+    db_insert(conn, cursor, _INSERT)
+
+
+def select_agentes(cursor):
+    _SELECT = """SELECT log_name
+        FROM agentes
+        WHERE agentes.activo = 1
+    """
+    l_ag = []
+    for row in enumerate(db_select(cursor, _SELECT), start=0):
+        print(f'{row[0]}\t{str(row[1])}')
+        l_ag = l_ag + list(row[1])
+    lista = input('Elige números de agente separados por " ": ')
+    agentes = []
+    str_agentes = ''
+    for agente in lista.split():
+        print(agente, l_ag[int(agente)])
+        agentes.append(str(l_ag[int(agente)]))
+        if len(str_agentes) > 0:
+            str_agentes = str_agentes + ', '
+        str_agentes = str_agentes + f"'{l_ag[int(agente)]}'"
+    return(str_agentes)
+
+
+def asistencia_agente(conn, cursor)->None:
+    # print('select_programa')
+    programa_id, _, _, _ = select_programa(cursor)
+    # print('select_agentes')
+    # agentes = tuple()
+    agentes = select_agentes(cursor)
+    # print(agentes)
+    fecha = input('Escribe la fecha en formato "aaaa-mm-dd": ')
+    agregar_agentes_a_fecha(conn, cursor, fecha, programa_id, agentes)
 
 
 def filtros_dias_agente(programa_id:str)->tuple:
@@ -907,6 +954,9 @@ def main()->None:
         print()
         print('5 - Para número de días por agente por mes y año.')
         print('6 - Para tiempo medio de atención por agente por mes y año.')
+        print()
+        print('7- Introducir agentes en un día sin llamadas')
+        print()
         # print('9 - TEST: PRUEBAS DE FICHEROS.')
         print()
         print('0 - Para terminar.')
@@ -923,6 +973,8 @@ def main()->None:
             dias_por_agente(cursor)
         elif hacer == '6':
             media_por_agente(cursor)
+        elif hacer == '7':
+            asistencia_agente(conn, cursor)
         elif hacer == '9':
             pruebas_ficheros()
 
