@@ -22,8 +22,8 @@ from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
 
 def check_fecha(fecha:str) -> str:
-    """Si existe, quitar la hora de la fecha.
-        Ej.: Incomming fecha: 'Call day': '19/8/2017 0:00:00' or 'yyyy-mm-dd'
+    """Normalizar el formato de la fecha: Si existe, quitar la hora de la fecha.
+    Ej.: Incomming fecha: 'Call day': '19/8/2017 0:00:00' or 'yyyy-mm-dd'
     Outgoing fecha: 2017/08/19"""
     # CHECK: ¿Existe funciones de fecha para hacer esto?
     if len(fecha) >= 9 and len(fecha) <= 10:
@@ -48,7 +48,8 @@ def check_fecha(fecha:str) -> str:
 
 
 def check_hora(hora:str) -> str:
-    """Incomming hora: 'Call time': '30/12/1899 7:54:15'
+    """Normalizar el formato de hora.
+    Incomming hora: 'Call time': '30/12/1899 7:54:15'
     Outgoing hora: 07:54:15"""
     # CHECK: ¿Existe funciones de hora para hacer esto?
     if len(hora) == 8:
@@ -61,13 +62,14 @@ def check_hora(hora:str) -> str:
 
 
 def check_dur(dur:str) -> int:
-    """Devolver la parte entera de Dur
-        Ej.: Incomming: 'Length': '56,00', Outgoing: 56"""
+    """Retorna la parte entera de la duración en segundos: Dur
+    Ej.: Incomming: 'Length': '56,00', Outgoing: 56"""
     return int(dur.split(sep=',')[0])
 
 
 def db_connect() -> tuple:
-    """Conectar a una base de datos, retornar connection y cursor"""
+    """Conectar a una base de datos.
+    Retornar connection y cursor"""
     # Agregar lo de leer el ,env y sacar los datos de ahí
     """dbconfig = { 'host': '192.168.0.9',
                 'user': 'joyastv_user',
@@ -103,7 +105,9 @@ def db_connect() -> tuple:
 
 
 def db_select(cursor, _SQL:str, valores:tuple = ())->list:
-    """Ejecutar un SELECT y retornar la lista de registros encontrados cursor.fetchall()"""
+    """Ejecutar el _SQL, normalmente un SELECT.
+    Si se recibe una lista de valores, se ejecuta el _SQL con dicha lista.
+    Retorna el cursor con la lista de registros encontrados: cursor.fetchall()"""
     if len(valores) == 0:
         cursor.execute(_SQL)
     else:
@@ -112,12 +116,12 @@ def db_select(cursor, _SQL:str, valores:tuple = ())->list:
 
 
 def select_programa(cursor)->tuple:
-    """Selecciona el programa de la lista de programas activos
-        retorna 4 campos: 
-        - ID del programa, 
-        - Nombre que sale en el MONITOR
-        - Nombre del programa (SALIDA) a agregar en el nombre del fichero de Excel
-        - Nombre del DIRECTORIO donde se guarda"""
+    """Selecciona el programa de TV de la lista de programas activos.
+    Retorna 4 campos: 
+    - ID del programa, 
+    - Nombre que sale en el MONITOR (Web)
+    - Nombre del programa (SALIDA) a agregar en el nombre del fichero de Excel
+    - Nombre del DIRECTORIO donde se guarda"""
 
     _SELECT = f"""SELECT id, nombre_excel, nombre_monitor, nombre_salida, directorio 
                 FROM {DB_TABLE_PROGRAMAS} WHERE activo = 1"""
@@ -151,7 +155,7 @@ def select_programa(cursor)->tuple:
 
 
 def directorios()->tuple:
-    """Devuelve una lista de directorios a usar:
+    """Retorna una lista de directorios a usar:
     - abs_xls_dir, path absoluto del directorio de XLS
     - abs_stats_dir, path absoluto del directorio para guardar las estadísticas sacadas
     - abs_csv_dir, path absoluto del directorio de CSV
@@ -171,7 +175,8 @@ def directorios()->tuple:
 
 
 def obtener_datos_de_csv(prog:str, salida:str)->tuple:
-    """Lee el fichero CSV y devuelve la lista de Tuplas (valores) a insertar en la DB"""
+    """Lee el fichero CSV apropiado según el parámetro salida.
+    Retorna la lista de Tuplas (valores) a insertar en la DB"""
     # El o los ficheros CSV los debemos obtener de un directorio específico
     # comprobando que exista el directorio y el fichero
 
@@ -204,7 +209,7 @@ def obtener_datos_de_csv(prog:str, salida:str)->tuple:
 
 
 def db_insert(conn, cursor, _INSERT, datos='')->None:
-    """Ejecuta el INSERT en la DB"""
+    """Ejecuta el INSERT en la DB."""
     try:
         if datos == '':
             cursor.execute(_INSERT)
@@ -218,6 +223,7 @@ def db_insert(conn, cursor, _INSERT, datos='')->None:
 
 
 def introducir_datos(conn, cursor)->None:
+    """Ejecuta los pasos necesarios para introducir los datos en la DB."""
     # print('select_programa')
     programa_id, _, salida, _ = select_programa(cursor)
     # print('obtener_datos_de_csv')
@@ -232,6 +238,8 @@ def introducir_datos(conn, cursor)->None:
 
 
 def agregar_agentes_a_fecha(conn, cursor, fecha, programa_id, agentes):
+    """Inserta los registros de agentes que no recibieron llamadas 
+    en una fecha y servicio determinado."""
     _INSERT = f"""INSERT INTO {DB_TABLE_LLAMADAS}
         (fecha, hora, llamante, dur, log_name, resultado, programa_id)
         SELECT '{fecha}', programas.hora_fin, 
@@ -245,6 +253,9 @@ def agregar_agentes_a_fecha(conn, cursor, fecha, programa_id, agentes):
 
 
 def select_agentes(cursor):
+    """Permite seleccionar los agentes de la lista de agentes activos en el momento.
+    Retorna un string con los agentes separados por ', ' para poder
+    insertarla directamente en la consulta en el LIKE(str_agentes)"""
     _SELECT = """SELECT log_name
         FROM agentes
         WHERE agentes.activo = 1
@@ -266,6 +277,8 @@ def select_agentes(cursor):
 
 
 def asistencia_agente(conn, cursor)->None:
+    """Ejecuta los pasos necesarios para introducir agentes sin llamadas
+    en una fecha específica en la DB."""
     # print('select_programa')
     programa_id, _, _, _ = select_programa(cursor)
     # print('select_agentes')
@@ -277,13 +290,22 @@ def asistencia_agente(conn, cursor)->None:
 
 
 def filtros_dias_agente(programa_id:str)->tuple:
-    """Preparar los parámetros para filtrar los datos de la consulta de días por agente"""
+    """Preparar los parámetros para filtrar los datos de la consulta de días por agente.
+    Retorna:
+    - aaaa
+    - mm
+    - programa_id"""
     aaaa, mm = ano_mes()
     return(aaaa, mm, programa_id)
 
 
 def dias_por_agente(cursor)->None:
     """Consulta de días trabajados por agente.
+    Tiene en cuenta un par de casos especiales a omitir.
+    3 x informes:
+    - Días por agente.
+    - Días por agente con Totales.
+    - Días por agente: Totales por GRUPOS.
     Salida por stdout."""
     programa_id, _, _, _ = select_programa(cursor)
     filtros = filtros_dias_agente(programa_id)
@@ -473,16 +495,19 @@ def dias_por_agente(cursor)->None:
             )
         """
 
+    titulo('Días por agente', sep='.')
     print('%-16s %s' % ('Agente', 'Días'))
     print('='*16, '='*4)
     for row in db_select(cursor, _SELECT, filtros):
         print(f'{row[0]:16} {row[1]:4}')
     print()
 
+    titulo('Días por agente con Totales', sep='.')
     for row in db_select(cursor, _SELECT_TOT, list(filtros) + list(filtros)):
         print(f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:16};{row[5]:7};{str(row[6]):>10};{row[7]:>10}')
     print()
 
+    titulo('Días por agente: Totales por GRUPOS', sep='.')
     for row in db_select(cursor, _SELECT_TOT_GRUPOS, list(filtros) + list(filtros)):
         print(f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:7};{str(row[5]):>10};{row[6]:>10}')
     print()
@@ -492,18 +517,18 @@ def media_por_agente(cursor)->None:
     """Consulta la media de duración de llamadas atendidas por agente.
     Salida por stdout."""
 
-    programa_id, _, _, _ = select_programa(cursor)
+    programa_id, prog_name, _, _ = select_programa(cursor)
     filtros = [programa_id]
     print('\n1 - si quiere sacar los datos de un mes específico')
     print('0 - si quiere los datos de toda la serie')
     todo = True
     select_fechas = ''
-    titulo = 'Datos para toda la serie'
+    tit = f'Datos para toda la serie de "{prog_name}"'
     if input('Elija: ') == '1':
         todo = False
         filtros = filtros_dias_agente(programa_id)
         select_fechas = f'YEAR(fecha) = ? AND MONTH(fecha) = ? AND '
-        titulo = f'Datos para el {filtros[1]} de {filtros[0]}'
+        tit = f'Datos para el {filtros[1]} de {filtros[0]} de "{prog_name}"'
 
     # print(type(filtros),filtros)
     _SELECT = f"""SELECT log_name, SEC_TO_TIME( AVG(dur) DIV 1 ) AS dur_media, SUM(dur) AS tot_sec, COUNT(id) AS num_llamadas
@@ -512,7 +537,7 @@ def media_por_agente(cursor)->None:
             GROUP BY log_name
             ORDER BY dur_media ASC
         """
-    print('\n' + titulo)
+    titulo(tit, sep='.')
     print('%-16s %-10s %-14s %-12s' % ('Agente', 'dur_media', 'tot_sec', 'num_llamadas'))
     print('='*16, '='*10, '='*14, '='*12)
     for row in db_select(cursor, _SELECT, filtros):
@@ -520,9 +545,9 @@ def media_por_agente(cursor)->None:
     print()
    
 
-
 def ano_mes()->tuple:
-    """Permite seleccionar el año y mes a ser procesado."""
+    """Seleccionar el año y mes a ser procesado.
+    Retorna: aaaa, mm"""
     while True:
         mm = input('Escriba el mes (1-12) que desea procesar: ')
         if int(mm) not in range(1,13):
@@ -594,7 +619,10 @@ def fin_de_mes(aaaa:str, mm:str)->str:
 
 
 def d_ini_d_fin(aaaa, mm)->tuple:
-    """Preguntar y comprobar día de inicio y día de fin a sacar."""
+    """Preguntar y comprobar día de inicio y día de fin a sacar.
+    Retorna:
+    - Día de inicio.
+    - Día de fin."""
     d_ini = 1
     d_fin = int(fin_de_mes(aaaa, mm))
 
@@ -632,7 +660,8 @@ def create_dir(name:str)->None:
 
 
 def check_directorios(stat_dir:str, servicio:str, salida:str)->None:
-    """Comprobar que existe el directorio de servicio donde se guardan las STATS."""
+    """Comprobar que existe el directorio de servicio donde se guardan las STATS y
+    dar opción de borrar o no los ficheros anteriores."""
     
     # Directorios
     # abs_xls_dir, abs_stats_dir, abs_csv_dir, abs_downloads_dir = directorios()
@@ -675,7 +704,8 @@ def check_directorios(stat_dir:str, servicio:str, salida:str)->None:
 
 
 def mover_a_almacen(dir_servicio:str, fch:str, salida:str)->None:
-    """Comprobar que existe el directorio de servicio donde se guardan las STATS."""
+    """Comprobar que existe el directorio de servicio donde se guardan las STATS y
+    mover al directorio de almacén los fichero anteriores."""
 
     suffix = f'.xlsx'
 
@@ -784,6 +814,8 @@ def sacar_datos_web(cursor)->None:
     options.binary_location = FIREFOX_BINARY_LOCATION
     service = Service(FIREFOX_GECKODRIVER)
 
+    titulo('En unos segundos se abrirá el navegador...', sep='.')
+    titulo('RECUERDE INTRODUCIR USUARIO Y CONTRASEÑA', sep='*')
     with Firefox(service=service, options=options) as driver:
         wait = WebDriverWait(driver, 15)
         driver.get('https://nstat.telemedia.hu/jeweladmin/multioption/monitor/')
@@ -878,13 +910,9 @@ def sacar_datos_web(cursor)->None:
 
             mover_a_almacen(dir_servicio, fch, salida)
 
-    sleep(8)
-    # driver.close()  # No hace falta, está incluido en el context manager 'WITH'
-
-
 
 def carga_punto_env()->None:
-    """Cargar como globales variables de environment definidas en el fichero .env"""
+    """Cargar como globales variables de environment definidas en el fichero '.env'."""
     from dotenv import load_dotenv
 
     load_dotenv()
@@ -920,7 +948,7 @@ def carga_punto_env()->None:
 
 
 def otras_globales()->None:
-    """Cargar otras variables globales necesarias"""
+    """Cargar otras variables globales necesarias."""
     global DIR_ABS_XLSX, DIR_ABS_STATS, DIR_ABS_CSV, DIR_ABS_DOWNLOADS
 
     global DIR_ABS_ONEDRIVE
@@ -928,26 +956,21 @@ def otras_globales()->None:
     DIR_ABS_XLSX, DIR_ABS_STATS, DIR_ABS_CSV, DIR_ABS_DOWNLOADS = directorios()
 
 
+def titulo(titulo, sep='-')->None:
+    """Escribir títulos informativos por stdout."""
+    print('\n',(78-len(titulo))//2*sep, titulo, (78-len(titulo))//2*sep)
+
+
 def main()->None:
+    """Main: da el menú de opciones disponibles."""
     carga_punto_env()
     otras_globales()
 
-    """
-    print(DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, DB_TABLE_LLAMADAS, DB_TABLE_PROGRAMAS)
-    print(FIREFOX_PROFILE, FIREFOX_BINARY_LOCATION, FIREFOX_GECKODRIVER)
-    print(STATS_WEB, DIR_RELATIVE, DIR_XLSX, DIR_CSV)
-    print(DIR_RELATIVE, DIR_XLSX, DIR_CSV)
-    print(DIR_ABS_XLSX, DIR_ABS_STATS, DIR_ABS_CSV, DIR_ABS_DOWNLOADS)
-    print(DIR_ABS_ONEDRIVE)
-    """
-
     conn, cursor = db_connect()
 
-    # pruebas_ficheros()
-
+    help(filtros_dias_agente)
     while True:
-        print('\n\nMenú')
-        print(50*'=')
+        titulo('Menú Principal', sep = '=')
         print('1 - Para sacar datos de la web.')
         print('2 - Para procesar xls a csv.')
         print('3 - Para introducir datos csv en la base de datos.')
@@ -962,18 +985,25 @@ def main()->None:
         print('0 - Para terminar.')
         hacer = input('\n¿Qué desea hacer?: ')
         if hacer == '0':
+            titulo('¡Hasta luego!')
             return()
         elif hacer == '1':
+            titulo('Sacar datos de la web')
             sacar_datos_web(cursor)
         elif hacer == '2':
+            titulo('Compilar fichero de CSV')
             crear_csv(cursor)
         elif hacer == '3':
+            titulo('Insertar los registros en la Base de Datos')
             introducir_datos(conn, cursor)
         elif hacer == '5':
+            titulo('Informe de días por agente')
             dias_por_agente(cursor)
         elif hacer == '6':
+            titulo('Informe de tiempos de atención por agente')
             media_por_agente(cursor)
         elif hacer == '7':
+            titulo('Registro de agentes en días sin llamadas')
             asistencia_agente(conn, cursor)
         elif hacer == '9':
             pruebas_ficheros()
