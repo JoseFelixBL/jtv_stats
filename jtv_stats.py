@@ -802,15 +802,10 @@ def sacar_datos_web(cursor)->None:
 
     # https://developer.mozilla.org/en-US/docs/Web/WebDriver
     # https://github.com/mozilla/geckodriver/releases/
-    # usar geckodriver-v0.32.0-win32.zip 
+    # usar geckodriver-v0.32.0-win32.zip o el que esté en .env
 
-    # profile_path = r'C:\Users\José\AppData\Roaming\Mozilla\Firefox\Profiles\jwbt8302.default-1596351137250'
-    # default_profile = FirefoxProfile(profile_path)
     options=Options()
-    # options.set_preference('profile', profile_path)
     options.set_preference('profile', FIREFOX_PROFILE)
-    # options.binary_location = r"C:\Program Files (x86)\Mozilla Firefox\firefox.exe"
-    # service = Service(r'G:/Workspace/jtv_stats/geckodriver.exe')
     options.binary_location = FIREFOX_BINARY_LOCATION
     service = Service(FIREFOX_GECKODRIVER)
 
@@ -855,8 +850,6 @@ def sacar_datos_web(cursor)->None:
             print('La fecha es: ' + fecha + ' - ', end='')
 
             # Poner la fecha
-            # i_day = driver.find_element_by_xpath('//*[@id="day"]')
-            # i_day = driver.find_element_by_name("day")
             i_day = driver.find_element(By.NAME, "day")
             i_day.clear()
             i_day.send_keys(fecha)
@@ -866,44 +859,31 @@ def sacar_datos_web(cursor)->None:
             i_day.send_keys(Keys.RETURN)
             sleep(5)
 
-            # Hacer click en el buscador de fechas
-            # i_cal = driver.find_element_by_xpath('//*[@id="ui-datepicker-div"]')
-            # i_cal.click()
-            # sleep(2)
-
-            #Lista de shows
-            # i_show = driver.find_element_by_xpath('//*[@id="shows"]')
-            # i_opciones = i_show.find_elements_by_tag_name('option')
+            # Lista de shows
             i_show = driver.find_element(By.XPATH, '//*[@id="shows"]')
             i_opciones = i_show.find_elements(By.TAG_NAME, 'option')
             no_data = True
 
             # Buscar el show de la fecha
             for op in i_opciones:
-                # if fecha in op.text:
                 if buscar in op.text:
                     no_data = False
                     i_op = op
                     print(op.text + ' encontrado.')
                     break
             if no_data :
-                print ('-----------> NO ENCONTRADO.')
+                print ('>>>--------> NO ENCONTRADO.')
                 continue
             i_op.click()
             sleep(2)
 
-            # Sacar las estadísticas
-            # i_list = driver.find_element_by_xpath('//*[@id="list"]')
+            # Sacar las estadísticas: list
             i_list = driver.find_element(By.XPATH, '//*[@id="list"]')
             i_list.click()
-            # print("============= le he dado al list.")
             sleep(2)
 
-            # Exportar las estadísticas...
-            # están es el <div id="calls">
-            # i_export = driver.find_element_by_xpath('//*[@id="export_to_excel"]')
+            # Exportar las estadísticas: export
             i_export = driver.find_element(By.XPATH, '//*[@id="export_to_excel"]')
-            # print("============= encontré 'export_to_excel'.")
             i_export.click()
             # ...y Dar tiempo para cerrar la ventana emergente (En Chrome, y en Firefox dar a guardar el fichero)
             sleep(3)
@@ -961,13 +941,22 @@ def titulo(titulo, sep='-')->None:
     print('\n',(78-len(titulo))//2*sep, titulo, (78-len(titulo))//2*sep)
 
 
-def main()->None:
-    """Main: da el menú de opciones disponibles."""
+def init()->None:
+    """Inicializar variables globales."""
     carga_punto_env()
     otras_globales()
 
+    global conn, cursor
     conn, cursor = db_connect()
 
+
+def end():
+    """Terminar procesos pendientes."""
+    conn.close()
+
+
+def main()->None:
+    """Main: da el menú de opciones disponibles."""
     while True:
         titulo('Menú Principal', sep = '=')
         print('1 - Para sacar datos de la web.')
@@ -1009,4 +998,6 @@ def main()->None:
 
 
 if __name__ == "__main__":
+    init()
     main()
+    end()
