@@ -968,7 +968,6 @@ def main()->None:
 
     conn, cursor = db_connect()
 
-    help(filtros_dias_agente)
     while True:
         titulo('Menú Principal', sep = '=')
         print('1 - Para sacar datos de la web.')
