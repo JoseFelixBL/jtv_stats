@@ -69,17 +69,9 @@ def check_dur(dur:str) -> int:
 
 def db_connect() -> tuple:
     """Conectar a una base de datos.
-    Retornar connection y cursor"""
-    # Agregar lo de leer el ,env y sacar los datos de ahí
-    """dbconfig = { 'host': '192.168.0.9',
-                'user': 'joyastv_user',
-                'password': 'joyastvstats',
-                'database': 'joyastv', }
-
-    dbconfig = { 'host': f'{DB_HOST}',
-                'user': f'{DB_USER}',
-                'password': f'{DB_PASSWORD}',
-                'database': f'{DB_NAME}', }"""
+    Retorna:
+    - 'mariadb.connections.Connection'
+    - 'mariadb.cursors.Cursor'"""
 
     dbconfig = { 'host': DB_HOST,
                 'user': DB_USER,
@@ -93,15 +85,6 @@ def db_connect() -> tuple:
     except mariadb.Error as e:
         print(f"Error connecting to MariaDB Platform: {e}")
         sys.exit(1)
-
-
-"""No sé cómo poner el type de cursor:
->>> conn = mariadb.connect(**dbconfig)
->>> cursor = conn.cursor()
->>> type(conn)
-<class 'mariadb.connections.Connection'>
->>> type(cursor)
-<class 'mariadb.cursors.Cursor'> """
 
 
 def db_select(cursor, _SQL:str, valores:tuple = ())->list:
@@ -161,7 +144,6 @@ def directorios()->tuple:
     - abs_csv_dir, path absoluto del directorio de CSV
     - abs_downloads_dir, path absoluto del directorio de descargas"""
     
-    # anchor = Path(os.getenv('OneDrive'))
     relative = Path(r'Documentos\Multiopción\TelemediaHU\Multioption Stats')
     xls_dir = Path( r'automation\JoyasSQL\PruPandas')
     csv_dir = Path(r'automation\JoyasSQL\DatosCSV')
@@ -177,12 +159,6 @@ def directorios()->tuple:
 def obtener_datos_de_csv(prog:str, salida:str)->tuple:
     """Lee el fichero CSV apropiado según el parámetro salida.
     Retorna la lista de Tuplas (valores) a insertar en la DB"""
-    # El o los ficheros CSV los debemos obtener de un directorio específico
-    # comprobando que exista el directorio y el fichero
-
-    # Directorios
-    # abs_xls_dir, abs_stats_dir, abs_csv_dir, abs_downloads_dir = directorios()
-
     if salida != '':
         salida = f'{salida} '
     patron = f'?????? {salida}to_access.csv'
@@ -224,11 +200,8 @@ def db_insert(conn, cursor, _INSERT, datos='')->None:
 
 def introducir_datos(conn, cursor)->None:
     """Ejecuta los pasos necesarios para introducir los datos en la DB."""
-    # print('select_programa')
     programa_id, _, salida, _ = select_programa(cursor)
-    # print('obtener_datos_de_csv')
     datos_a_insertar = obtener_datos_de_csv(programa_id, salida)
-    # print('db_insert')
     _INSERT = f"""
         INSERT IGNORE INTO {DB_TABLE_LLAMADAS} (fecha,  hora, llamante, dur, station, voice_file,
             log_name, resultado, programa_id
@@ -279,12 +252,8 @@ def select_agentes(cursor):
 def asistencia_agente(conn, cursor)->None:
     """Ejecuta los pasos necesarios para introducir agentes sin llamadas
     en una fecha específica en la DB."""
-    # print('select_programa')
     programa_id, _, _, _ = select_programa(cursor)
-    # print('select_agentes')
-    # agentes = tuple()
     agentes = select_agentes(cursor)
-    # print(agentes)
     fecha = input('Escribe la fecha en formato "aaaa-mm-dd": ')
     agregar_agentes_a_fecha(conn, cursor, fecha, programa_id, agentes)
 
@@ -530,7 +499,6 @@ def media_por_agente(cursor)->None:
         select_fechas = f'YEAR(fecha) = ? AND MONTH(fecha) = ? AND '
         tit = f'Datos para el {filtros[1]} de {filtros[0]} de "{prog_name}"'
 
-    # print(type(filtros),filtros)
     _SELECT = f"""SELECT log_name, SEC_TO_TIME( AVG(dur) DIV 1 ) AS dur_media, SUM(dur) AS tot_sec, COUNT(id) AS num_llamadas
             FROM llamadas
             WHERE {select_fechas} programa_id = ?
@@ -567,25 +535,16 @@ def crear_csv(cursor)->None:
     programa_id, monitor, salida, _ = select_programa(cursor)
     aaaa, mm = ano_mes()
 
-    # Directorios
-    # abs_xls_dir, abs_stats_dir, abs_csv_dir, abs_downloads_dir = directorios()
-    # anchor = Path(os.getenv('OneDrive'))
-    # relative = Path(r'Documentos\Multiopción\TelemediaHU\Multioption Stats')
-    # xls_dir = Path( r'automation\JoyasSQL\PruPandas')
-    # csv_dir = Path(r'automation\JoyasSQL\DatosCSV')
-
-    lista_df = list()
     if salida != '':
         salida = f'{salida} '
 
     patron = f'{aaaa}{mm}?? {salida}multioption_monitor_*.xlsx'
-    # print(f'PATRON; {patron}')
 
     vacio = True
+    lista_df = list()
     for file in DIR_ABS_XLSX.glob(patron):
         vacio = False
         # Concatenar en lista_df todos los Excel
-        # print(f'===> Fichero a concatenar: {file} <===')
         lista_df.append(pd.read_excel(DIR_ABS_XLSX.joinpath(file)))
 
     # Crea un DataFrame con todos los registros
@@ -663,17 +622,13 @@ def check_directorios(stat_dir:str, servicio:str, salida:str)->None:
     """Comprobar que existe el directorio de servicio donde se guardan las STATS y
     dar opción de borrar o no los ficheros anteriores."""
     
-    # Directorios
-    # abs_xls_dir, abs_stats_dir, abs_csv_dir, abs_downloads_dir = directorios()
-
     # Directorio de almacén de los .XLSX por servicio
     create_dir(DIR_ABS_STATS)
     create_dir(DIR_ABS_STATS.joinpath(stat_dir))
 
     # Directorio de procesado de .XLSX para crear CSV
     create_dir(DIR_ABS_XLSX)
-    # Limpiar directorio de procesado de ficheros viejos del 'servicio'
-    # no sé si será bueno... puede que quiera acumular ficheros y procesarlos otro día...
+
     patron = f'???????? {salida} multioption_monitor_*.xlsx'
     if salida == '':
         patron = f'???????? multioption_monitor_*.xlsx'
@@ -684,10 +639,10 @@ def check_directorios(stat_dir:str, servicio:str, salida:str)->None:
         os.remove(fichero)
     if anteriores:
         if input('\nHe encontrado ficheros anteriores, ¿quiere borrarlos? (s/n): ') == 's':
+            # Limpiar ficheros viejos del 'servicio'
             for fichero in DIR_ABS_XLSX.glob(patron):
                 os.remove(fichero)
            
-
     # Directorio de CSV
     create_dir(DIR_ABS_CSV)
 
@@ -697,7 +652,7 @@ def check_directorios(stat_dir:str, servicio:str, salida:str)->None:
     # Directorio de descargas _OLD_multioption_monitor
     create_dir(DIR_ABS_DOWNLOADS.joinpath('_OLD_multioption_monitor'))
 
-    # Borrar ficheros "multioption_monitor_*" de Downloads antes de empezar a bajar de la web
+    # Borrar "multioption_monitor_*" de Downloads antes de empezar a bajar de la web
     for mul_mon in DIR_ABS_DOWNLOADS.glob('multioption_monitor_*.xls'):
         print(mul_mon)
         os.remove(mul_mon)
@@ -708,9 +663,6 @@ def mover_a_almacen(dir_servicio:str, fch:str, salida:str)->None:
     mover al directorio de almacén los fichero anteriores."""
 
     suffix = f'.xlsx'
-
-    # Directorios
-    # abs_xls_dir, abs_stats_dir, abs_csv_dir, abs_downloads_dir = directorios()
 
     # Directorio de almacén de los .XLSX por servicio
     dir_abs_almacen = DIR_ABS_STATS.joinpath(dir_servicio)
