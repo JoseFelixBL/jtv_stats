@@ -636,7 +636,7 @@ def check_directorios(stat_dir:str, servicio:str, salida:str)->None:
     for fichero in DIR_ABS_XLSX.glob(patron):
         print(fichero)
         anteriores = True
-        os.remove(fichero)
+        # os.remove(fichero)
     if anteriores:
         if input('\nHe encontrado ficheros anteriores, ¿quiere borrarlos? (s/n): ') == 's':
             # Limpiar ficheros viejos del 'servicio'
