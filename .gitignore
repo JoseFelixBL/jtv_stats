@@ -5,3 +5,5 @@ ve_jtv_stats/
 *.csv
 geckodriver*
 requirements.txt
+__pycache__/
+Pruebas*.txt
