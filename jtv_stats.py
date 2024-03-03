@@ -801,31 +801,45 @@ def sacar_datos_web(cursor)->None:
             buscar = monitor + ' - ' + fecha
             print('La fecha es: ' + fecha + ' - ', end='')
 
-            # Poner la fecha
-            i_day = driver.find_element(By.NAME, "day")
-            i_day.clear()
-            i_day.send_keys(fecha)
-            sleep(1)
-            i_day.send_keys(Keys.RETURN)
-            sleep(1)
-            i_day.send_keys(Keys.RETURN)
-            sleep(5)
-
-            # Lista de shows
-            i_show = driver.find_element(By.XPATH, '//*[@id="shows"]')
-            i_opciones = i_show.find_elements(By.TAG_NAME, 'option')
+            # ...............................
+            # 3 oportunidades para sacar los datos de cada fecha
             no_data = True
+            for i in range(3):
 
-            # Buscar el show de la fecha
-            for op in i_opciones:
-                if buscar in op.text:
-                    no_data = False
-                    i_op = op
-                    print(op.text + ' encontrado.')
-                    break
-            if no_data :
-                print ('>>>--------> NO ENCONTRADO.')
+                # Poner la fecha
+                i_day = driver.find_element(By.NAME, "day")
+                i_day.clear()
+                i_day.send_keys(fecha)
+                sleep(1)
+                i_day.send_keys(Keys.RETURN)
+                sleep(1)
+                i_day.send_keys(Keys.RETURN)
+                sleep(5)
+
+                # Lista de shows
+                i_show = driver.find_element(By.XPATH, '//*[@id="shows"]')
+                i_opciones = i_show.find_elements(By.TAG_NAME, 'option')
+                no_data = True
+
+                # Buscar el show de la fecha
+                for op in i_opciones:
+                    if buscar in op.text:
+                        no_data = False
+                        i_op = op
+                        print(op.text + ' encontrado.')
+                        break
+                if no_data :
+                    print ('>>>--------> NO ENCONTRADO.')
+                    sleep(3)
+                    continue
+
+                break
+
+            if no_data:
+                sleep(4)
                 continue
+            # Fin de las 3 oportunidades
+            # ...............................
             i_op.click()
             sleep(2)
 
