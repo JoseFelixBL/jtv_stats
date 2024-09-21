@@ -7,3 +7,5 @@ geckodriver*
 requirements.txt
 __pycache__/
 Pruebas*.txt
+Pipfile
+Pipfile.lock
