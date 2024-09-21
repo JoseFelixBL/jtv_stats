@@ -22,6 +22,16 @@ from selenium.webdriver.firefox.service import Service
 # from webdriver_manager.firefox import FirefoxDriverManager
 
 
+DB_USER, DB_PASSWORD, DB_HOST, DB_NAME, DB_TABLE_LLAMADAS, DB_TABLE_PROGRAMAS = [
+    "", "", "", "", "", ""]
+FIREFOX_PROFILE, FIREFOX_BINARY_LOCATION, FIREFOX_GECKODRIVER = ["", "", ""]
+STATS_WEB = ""
+DIR_RELATIVE, DIR_XLSX, DIR_CSV = ["", "", ""]
+DIR_ABS_XLSX, DIR_ABS_STATS, DIR_ABS_CSV, DIR_ABS_DOWNLOADS = ["", "", "", ""]
+DIR_ABS_ONEDRIVE = ""
+conn, cursor = ["", ""]
+
+
 def check_fecha(fecha: str) -> str:
     """Normalizar el formato de la fecha: Si existe, quitar la hora de la fecha.
     Ej.: Incomming fecha: 'Call day': '19/8/2017 0:00:00' or 'yyyy-mm-dd'
