@@ -778,7 +778,7 @@ def sacar_datos_web(cursor) -> None:
     titulo('En unos segundos se abrirá el navegador...', sep='.')
     titulo('RECUERDE INTRODUCIR USUARIO Y CONTRASEÑA', sep='*')
     with Firefox(service=service, options=options) as driver:
-        wait = WebDriverWait(driver, 15)
+        _ = WebDriverWait(driver, 15)
         driver.get('https://nstat.telemedia.hu/jeweladmin/multioption/monitor/')
 
         """ 
