@@ -90,15 +90,15 @@ def db_connect() -> tuple:
                 'database': DB_NAME, }
 
     try:
-        conn = mariadb.connect(**dbconfig)
-        cursor = conn.cursor()
-        return (conn, cursor)
+        l_conn = mariadb.connect(**dbconfig)
+        l_cursor = l_conn.cursor()
+        return (l_conn, l_cursor)
     except mariadb.Error as e:
         print(f"Error connecting to MariaDB Platform: {e}")
         sys.exit(1)
 
 
-def db_select(cursor, _SQL: str, valores: tuple = ()) -> list:
+def db_select(_SQL: str, valores: tuple = ()) -> list:
     """Ejecutar el _SQL, normalmente un SELECT.
     Si se recibe una lista de valores, se ejecuta el _SQL con dicha lista.
     Retorna el cursor con la lista de registros encontrados: cursor.fetchall()"""
@@ -109,7 +109,7 @@ def db_select(cursor, _SQL: str, valores: tuple = ()) -> list:
     return cursor.fetchall()
 
 
-def select_programa(cursor) -> tuple:
+def select_programa() -> tuple:
     """Selecciona el programa de TV de la lista de programas activos.
     Retorna 4 campos: 
     - ID del programa, 
@@ -130,7 +130,7 @@ def select_programa(cursor) -> tuple:
         directorio = dict()
 
         # Escribe la lista de programas activos
-        for row in db_select(cursor, _SELECT):
+        for row in db_select(_SELECT):
             print(f'{row[0]}\t{row[1]:25}\t{row[2]:15}\t{row[3]}\t{row[4]}')
             programas.append(str(row[0]))
             monitor[str(row[0])] = row[2]
@@ -196,7 +196,7 @@ def obtener_datos_de_csv(prog: str, salida: str) -> tuple:
     return (valores)
 
 
-def db_insert(conn, cursor, _INSERT, datos='') -> None:
+def db_insert(_INSERT, datos='') -> None:
     """Ejecuta el INSERT en la DB."""
     try:
         if datos == '':
@@ -210,19 +210,19 @@ def db_insert(conn, cursor, _INSERT, datos='') -> None:
     conn.commit()
 
 
-def introducir_datos(conn, cursor) -> None:
+def introducir_datos() -> None:
     """Ejecuta los pasos necesarios para introducir los datos en la DB."""
-    programa_id, _, salida, _ = select_programa(cursor)
+    programa_id, _, salida, _ = select_programa()
     datos_a_insertar = obtener_datos_de_csv(programa_id, salida)
     _INSERT = f"""
         INSERT IGNORE INTO {DB_TABLE_LLAMADAS} (fecha,  hora, llamante, dur, station, voice_file,
             log_name, resultado, programa_id
             ) values (%s, %s, %s, %s, %s, %s, %s, %s, %s)
         """
-    db_insert(conn, cursor, _INSERT, datos_a_insertar)
+    db_insert(_INSERT, datos_a_insertar)
 
 
-def agregar_agentes_a_fecha(conn, cursor, fecha, programa_id, agentes):
+def agregar_agentes_a_fecha(fecha, programa_id, agentes):
     """Inserta los registros de agentes que no recibieron llamadas 
     en una fecha y servicio determinado."""
     _INSERT = f"""INSERT INTO {DB_TABLE_LLAMADAS}
@@ -234,10 +234,10 @@ def agregar_agentes_a_fecha(conn, cursor, fecha, programa_id, agentes):
         WHERE programas.id = {programa_id}
         AND agentes.log_name IN ( {agentes} )
     """
-    db_insert(conn, cursor, _INSERT)
+    db_insert(_INSERT)
 
 
-def select_agentes(cursor):
+def select_agentes():
     """Permite seleccionar los agentes de la lista de agentes activos en el momento.
     Retorna un string con los agentes separados por ', ' para poder
     insertarla directamente en la consulta en el LIKE(str_agentes)"""
@@ -246,7 +246,7 @@ def select_agentes(cursor):
         WHERE agentes.activo = 1
     """
     l_ag = []
-    for row in enumerate(db_select(cursor, _SELECT), start=0):
+    for row in enumerate(db_select(_SELECT), start=0):
         print(f'{row[0]}\t{str(row[1])}')
         l_ag = l_ag + list(row[1])
     lista = input('Elige números de agente separados por " ": ')
@@ -261,13 +261,13 @@ def select_agentes(cursor):
     return (str_agentes)
 
 
-def asistencia_agente(conn, cursor) -> None:
+def asistencia_agente() -> None:
     """Ejecuta los pasos necesarios para introducir agentes sin llamadas
     en una fecha específica en la DB."""
-    programa_id, _, _, _ = select_programa(cursor)
-    agentes = select_agentes(cursor)
+    programa_id, _, _, _ = select_programa()
+    agentes = select_agentes()
     fecha = input('Escribe la fecha en formato "aaaa-mm-dd": ')
-    agregar_agentes_a_fecha(conn, cursor, fecha, programa_id, agentes)
+    agregar_agentes_a_fecha(fecha, programa_id, agentes)
 
 
 def filtros_dias_agente(programa_id: str) -> tuple:
@@ -280,7 +280,7 @@ def filtros_dias_agente(programa_id: str) -> tuple:
     return (aaaa, mm, programa_id)
 
 
-def dias_por_agente(cursor) -> None:
+def dias_por_agente() -> None:
     """Consulta de días trabajados por agente.
     Tiene en cuenta un par de casos especiales a omitir.
     3 x informes:
@@ -288,7 +288,7 @@ def dias_por_agente(cursor) -> None:
     - Días por agente con Totales.
     - Días por agente: Totales por GRUPOS.
     Salida por stdout."""
-    programa_id, _, _, _ = select_programa(cursor)
+    programa_id, _, _, _ = select_programa()
     filtros = filtros_dias_agente(programa_id)
 
     if programa_id == '17' and filtros[0] == '2022' and filtros[1] == '11':
@@ -479,28 +479,28 @@ def dias_por_agente(cursor) -> None:
     titulo('Días por agente', sep='.')
     print('%-16s %s' % ('Agente', 'Días'))
     print('='*16, '='*4)
-    for row in db_select(cursor, _SELECT, filtros):
+    for row in db_select(_SELECT, filtros):
         print(f'{row[0]:16} {row[1]:4}')
     print()
 
     titulo('Días por agente con Totales', sep='.')
-    for row in db_select(cursor, _SELECT_TOT, list(filtros) + list(filtros)):
+    for row in db_select(_SELECT_TOT, list(filtros) + list(filtros)):
         print(
             f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:16};{row[5]:7};{str(row[6]):>10};{row[7]:>10}')
     print()
 
     titulo('Días por agente: Totales por GRUPOS', sep='.')
-    for row in db_select(cursor, _SELECT_TOT_GRUPOS, list(filtros) + list(filtros)):
+    for row in db_select(_SELECT_TOT_GRUPOS, list(filtros) + list(filtros)):
         print(
             f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:7};{str(row[5]):>10};{row[6]:>10}')
     print()
 
 
-def media_por_agente(cursor) -> None:
+def media_por_agente() -> None:
     """Consulta la media de duración de llamadas atendidas por agente.
     Salida por stdout."""
 
-    programa_id, prog_name, _, _ = select_programa(cursor)
+    programa_id, prog_name, _, _ = select_programa()
     filtros = [programa_id]
     print('\n1 - si quiere sacar los datos de un mes específico')
     print('0 - si quiere los datos de toda la serie')
@@ -523,7 +523,7 @@ def media_por_agente(cursor) -> None:
     print('%-16s %-10s %-14s %-12s' %
           ('Agente', 'dur_media', 'tot_sec', 'num_llamadas'))
     print('='*16, '='*10, '='*14, '='*12)
-    for row in db_select(cursor, _SELECT, filtros):
+    for row in db_select(_SELECT, filtros):
         print(f'{row[0]:16} {str(row[1]):10} {row[2]:14} {row[3]:12}')
     print()
 
@@ -544,11 +544,11 @@ def ano_mes() -> tuple:
         return (aaaa, mm)
 
 
-def crear_csv(cursor) -> None:
+def crear_csv() -> None:
     """Crea el fichero CSV que será usado para actualizar la DB.
     El nombre del fichero se compone de '{aaaa}{mm} {salida} to_access.csv'."""
     # programa_id, monitor, salida, _ = select_programa(cursor)
-    _, _, salida, _ = select_programa(cursor)
+    _, _, salida, _ = select_programa()
     aaaa, mm = ano_mes()
 
     if salida != '':
@@ -766,12 +766,12 @@ def pruebas_ficheros() -> None:
     print(f'with_suffix({kk}) : {f.with_suffix(f".{kk}")}')
 
 
-def sacar_datos_web(cursor) -> None:
+def sacar_datos_web() -> None:
     """Saca los datos de la web para procesarlos."""
     aaaa, mm = ano_mes()
     d_ini, d_fin = d_ini_d_fin(aaaa, mm)
     # programa_id, monitor, salida, dir_servicio = select_programa(cursor)
-    _, monitor, salida, dir_servicio = select_programa(cursor)
+    _, monitor, salida, dir_servicio = select_programa()
 
     # prueba de la creación de directorios
     check_directorios(dir_servicio, monitor, salida)
@@ -969,22 +969,22 @@ def main() -> None:
             return ()
         elif hacer == '1':
             titulo('Sacar datos de la web')
-            sacar_datos_web(cursor)
+            sacar_datos_web()
         elif hacer == '2':
             titulo('Compilar fichero de CSV')
-            crear_csv(cursor)
+            crear_csv()
         elif hacer == '3':
             titulo('Insertar los registros en la Base de Datos')
-            introducir_datos(conn, cursor)
+            introducir_datos()
         elif hacer == '5':
             titulo('Informe de días por agente')
-            dias_por_agente(cursor)
+            dias_por_agente()
         elif hacer == '6':
             titulo('Informe de tiempos de atención por agente')
-            media_por_agente(cursor)
+            media_por_agente()
         elif hacer == '7':
             titulo('Registro de agentes en días sin llamadas')
-            asistencia_agente(conn, cursor)
+            asistencia_agente()
         elif hacer == '9':
             pruebas_ficheros()
 
