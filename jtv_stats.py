@@ -121,7 +121,7 @@ def select_programa() -> tuple:
                 FROM {DB_TABLE_PROGRAMAS} WHERE activo = 1"""
 
     while True:
-        print('ID\t%-25s\t%-15s\t%s' % ('Programa', 'Monitor', 'Salida'))
+        print(f'ID\t{'Programa':<25s}\t{'Monitor':<15s}\tSalida')
         print('==\t'+'='*25 + '\t' + '='*15 + '\t' + '='*8)
 
         programas = []
@@ -490,7 +490,8 @@ def dias_por_agente() -> None:
         """
 
     titulo('Días por agente', sep='.')
-    print('%-16s %s' % ('Agente', 'Días'))
+    # print('%-16s %s' % ('Agente', 'Días'))
+    print(f"{'Agente':<16s} Días")
     print('='*16, '='*4)
     for row in db_select(_SELECT, filtros):
         print(f'{row[0]:16} {row[1]:4}')
@@ -532,8 +533,8 @@ def media_por_agente() -> None:
             ORDER BY dur_media ASC
         """
     titulo(tit, sep='.')
-    print('%-16s %-10s %-14s %-12s' %
-          ('Agente', 'dur_media', 'tot_sec', 'num_llamadas'))
+    print(f"{'Agente':<16s} {'dur_media':<10s} {
+          'tot_sec':>14s} {'num_llamadas':<12s}")
     print('='*16, '='*10, '='*14, '='*12)
     for row in db_select(_SELECT, filtros):
         print(f'{row[0]:16} {str(row[1]):10} {row[2]:14} {row[3]:12}')
@@ -834,8 +835,10 @@ def sacar_datos_web() -> None:
 
         for dia in range(int(d_ini), int(d_fin) + 1):
             # Preparar fecha a procesar
-            fecha = '{:s}-{:02d}-{:02d}'.format(aaaa, int(mm), dia)
-            fch = '{:s}{:02d}{:02d}'.format(aaaa, int(mm), dia)
+            # fecha = '{:s}-{:02d}-{:02d}'.format(aaaa, int(mm), dia)
+            # fch = '{:s}{:02d}{:02d}'.format(aaaa, int(mm), dia)
+            fecha = f'{aaaa:s}-{int(mm):02d}-{dia:02d}'
+            fch = f'{aaaa:s}{int(mm):02d}{dia:02d}'
             buscar = monitor + ' - ' + fecha
             print('La fecha es: ' + fecha + ' - ', end='')
 
