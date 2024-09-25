@@ -193,7 +193,7 @@ def obtener_datos_de_csv(prog: str, salida: str) -> tuple:
                 # prog es el último campo necesario
                 valores.append((ff[0], hh[0], cc[0], dd[0],
                                ss[0], vv[0], ll[0], rr[0], prog))
-    return (valores)
+    return valores
 
 
 def db_insert(_INSERT, datos='') -> None:
@@ -258,7 +258,7 @@ def select_agentes():
         if len(str_agentes) > 0:
             str_agentes = str_agentes + ', '
         str_agentes = str_agentes + f"'{l_ag[int(agente)]}'"
-    return (str_agentes)
+    return str_agentes
 
 
 def asistencia_agente() -> None:
@@ -602,7 +602,7 @@ def fin_de_mes(aaaa: str, mm: str) -> str:
     di = datetime.strptime(fi, "%d-%m-%Y")
     df = datetime.strptime(ff, "%d-%m-%Y")
     t = df - di
-    return (t.days)
+    return t.days
 
 
 def d_ini_d_fin(aaaa, mm) -> tuple:
