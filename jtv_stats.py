@@ -140,10 +140,10 @@ def select_programa() -> tuple:
         prog = input('Por favor seleccione un ID de programa de la lista: ')
         if prog in programas:
             sal = salida[prog]
-            if salida[prog] == None:
+            if salida[prog] is None:
                 sal = ''
             carpeta = directorio[prog]
-            if directorio[prog] == None:
+            if directorio[prog] is None:
                 carpeta = ''
             return (prog, monitor[prog], sal, carpeta)
 
