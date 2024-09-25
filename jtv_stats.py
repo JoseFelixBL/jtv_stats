@@ -500,13 +500,15 @@ def dias_por_agente() -> None:
     titulo('Días por agente con Totales', sep='.')
     for row in db_select(_SELECT_TOT, list(filtros) + list(filtros)):
         print(
-            f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:16};{row[5]:7};{str(row[6]):>10};{row[7]:>10}')
+            f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:16};{
+                row[5]:7};{str(row[6]):>10};{row[7]:>10}')
     print()
 
     titulo('Días por agente: Totales por GRUPOS', sep='.')
     for row in db_select(_SELECT_TOT_GRUPOS, list(filtros) + list(filtros)):
         print(
-            f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:7};{str(row[5]):>10};{row[6]:>10}')
+            f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:7};{
+                str(row[5]):>10};{row[6]:>10}')
     print()
 
 
