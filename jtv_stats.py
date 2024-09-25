@@ -308,7 +308,8 @@ def dias_por_agente() -> None:
             CAST( 'Núm. Días' AS CHAR ), 'Total €'
             UNION ALL
             (
-                SELECT YEAR({DB_TABLE_LLAMADAS}.fecha) AS Año, MONTH({DB_TABLE_LLAMADAS}.fecha) AS Mes,
+                SELECT YEAR({DB_TABLE_LLAMADAS}.fecha) AS Año,
+                MONTH({DB_TABLE_LLAMADAS}.fecha) AS Mes,
                 agentes.nombre AS Nombre, agentes.log_name AS Agente,
                 programas.nombre_monitor AS Programa,
                 FORMAT( programas.factura_hora , 2, 'es_ES') AS '€/hora',
@@ -320,7 +321,8 @@ def dias_por_agente() -> None:
                 INNER JOIN programas ON programas.id = llamadas.programa_id
                 WHERE YEAR(llamadas.fecha) = ? AND MONTH(llamadas.fecha) = ?
                 AND {DB_TABLE_LLAMADAS}.programa_id = ?
-                AND {DB_TABLE_LLAMADAS}.log_name <> 'tomfp' AND {DB_TABLE_LLAMADAS}.log_name <> 'yudith'
+                AND {DB_TABLE_LLAMADAS}.log_name <> 'tomfp'
+                AND {DB_TABLE_LLAMADAS}.log_name <> 'yudith'
                 GROUP BY llamadas.log_name
                 ORDER BY grupos.grupo, llamadas.log_name
             )
@@ -340,7 +342,8 @@ def dias_por_agente() -> None:
                 INNER JOIN programas ON programas.id = {DB_TABLE_LLAMADAS}.programa_id
                 WHERE YEAR({DB_TABLE_LLAMADAS}.fecha) = ? AND MONTH({DB_TABLE_LLAMADAS}.fecha) = ?
                 AND {DB_TABLE_LLAMADAS}.programa_id = ?
-                AND {DB_TABLE_LLAMADAS}.log_name <> 'tomfp' AND {DB_TABLE_LLAMADAS}.log_name <> 'yudith'
+                AND {DB_TABLE_LLAMADAS}.log_name <> 'tomfp'
+                AND {DB_TABLE_LLAMADAS}.log_name <> 'yudith'
                 GROUP BY llamadas.log_name
             ) tt
         )
@@ -351,18 +354,21 @@ def dias_por_agente() -> None:
             UNION ALL
 
             (
-                SELECT YEAR({DB_TABLE_LLAMADAS}.fecha) AS Año, MONTH({DB_TABLE_LLAMADAS}.fecha) AS Mes,
+                SELECT YEAR({DB_TABLE_LLAMADAS}.fecha) AS Año,
+                MONTH({DB_TABLE_LLAMADAS}.fecha) AS Mes,
                 grupos.grupo_desc AS Grupo,  programas.nombre_monitor AS Programa,
                 FORMAT(programas.factura_hora, 2, 'es_ES') AS e_hora,
                 COUNT(DISTINCT fecha, {DB_TABLE_LLAMADAS}.log_name) AS Total_horas,
-                (COUNT(DISTINCT fecha, {DB_TABLE_LLAMADAS}.log_name) * programas.factura_hora ) AS kk
+                (COUNT(DISTINCT fecha,
+                {DB_TABLE_LLAMADAS}.log_name) * programas.factura_hora ) AS kk
                 FROM agentes
                 INNER JOIN {DB_TABLE_LLAMADAS} ON {DB_TABLE_LLAMADAS}.log_name = agentes.log_name
                 INNER JOIN grupos ON grupos.grupo = agentes.grupo
                 INNER JOIN programas ON programas.id = {DB_TABLE_LLAMADAS}.programa_id
                 WHERE YEAR({DB_TABLE_LLAMADAS}.fecha) = ? AND MONTH({DB_TABLE_LLAMADAS}.fecha) = ?
                 AND {DB_TABLE_LLAMADAS}.programa_id = ?
-                AND {DB_TABLE_LLAMADAS}.log_name <> 'tomfp' AND {DB_TABLE_LLAMADAS}.log_name <> 'yudith'
+                AND {DB_TABLE_LLAMADAS}.log_name <> 'tomfp'
+                AND {DB_TABLE_LLAMADAS}.log_name <> 'yudith'
                 GROUP BY grupos.grupo
             )
         ) resulting_set
@@ -376,12 +382,15 @@ def dias_por_agente() -> None:
                     (COUNT(DISTINCT fecha) ) AS n_dias,
                     (COUNT(DISTINCT fecha) * programas.factura_hora ) AS kk
                     FROM agentes
-                    INNER JOIN {DB_TABLE_LLAMADAS} ON {DB_TABLE_LLAMADAS}.log_name = agentes.log_name
+                    INNER JOIN {DB_TABLE_LLAMADAS}
+                    ON {DB_TABLE_LLAMADAS}.log_name = agentes.log_name
                     INNER JOIN grupos ON grupos.grupo = agentes.grupo
                     INNER JOIN programas ON programas.id = {DB_TABLE_LLAMADAS}.programa_id
-                    WHERE YEAR({DB_TABLE_LLAMADAS}.fecha) = ? AND MONTH({DB_TABLE_LLAMADAS}.fecha) = ?
+                    WHERE YEAR({DB_TABLE_LLAMADAS}.fecha) = ?
+                    AND MONTH({DB_TABLE_LLAMADAS}.fecha) = ?
                     AND {DB_TABLE_LLAMADAS}.programa_id = ?
-                    AND {DB_TABLE_LLAMADAS}.log_name <> 'tomfp' AND {DB_TABLE_LLAMADAS}.log_name <> 'yudith'
+                    AND {DB_TABLE_LLAMADAS}.log_name <> 'tomfp'
+                    AND {DB_TABLE_LLAMADAS}.log_name <> 'yudith'
                     GROUP BY {DB_TABLE_LLAMADAS}.log_name
                 ) tt
             )
@@ -442,11 +451,13 @@ def dias_por_agente() -> None:
             UNION ALL
 
             (
-                SELECT YEAR({DB_TABLE_LLAMADAS}.fecha) AS Año, MONTH({DB_TABLE_LLAMADAS}.fecha) AS Mes,
+                SELECT YEAR({DB_TABLE_LLAMADAS}.fecha) AS Año,
+                MONTH({DB_TABLE_LLAMADAS}.fecha) AS Mes,
                 grupos.grupo_desc AS Grupo, programas.nombre_monitor AS Programa,
                 FORMAT(programas.factura_hora, 2, 'es_ES') AS e_hora,
                 COUNT(DISTINCT fecha, {DB_TABLE_LLAMADAS}.log_name) AS Total_horas,
-                (COUNT(DISTINCT fecha, {DB_TABLE_LLAMADAS}.log_name) * programas.factura_hora ) AS kk
+                (COUNT(DISTINCT fecha,
+                {DB_TABLE_LLAMADAS}.log_name) * programas.factura_hora ) AS kk
                 FROM agentes
                 INNER JOIN {DB_TABLE_LLAMADAS} ON {DB_TABLE_LLAMADAS}.log_name = agentes.log_name
                 INNER JOIN grupos ON grupos.grupo = agentes.grupo
@@ -466,10 +477,12 @@ def dias_por_agente() -> None:
                     (COUNT(DISTINCT fecha) ) AS n_dias,
                     (COUNT(DISTINCT fecha) * programas.factura_hora ) AS kk
                     FROM agentes
-                    INNER JOIN {DB_TABLE_LLAMADAS} ON {DB_TABLE_LLAMADAS}.log_name = agentes.log_name
+                    INNER JOIN {DB_TABLE_LLAMADAS}
+                    ON {DB_TABLE_LLAMADAS}.log_name = agentes.log_name
                     INNER JOIN grupos ON grupos.grupo = agentes.grupo
                     INNER JOIN programas ON programas.id = {DB_TABLE_LLAMADAS}.programa_id
-                    WHERE YEAR({DB_TABLE_LLAMADAS}.fecha) = ? AND MONTH({DB_TABLE_LLAMADAS}.fecha) = ?
+                    WHERE YEAR({DB_TABLE_LLAMADAS}.fecha) = ?
+                    AND MONTH({DB_TABLE_LLAMADAS}.fecha) = ?
                     AND {DB_TABLE_LLAMADAS}.programa_id = ?
                     GROUP BY {DB_TABLE_LLAMADAS}.log_name
                 ) tt
@@ -511,7 +524,8 @@ def media_por_agente() -> None:
         select_fechas = 'YEAR(fecha) = ? AND MONTH(fecha) = ? AND '
         tit = f'Datos para el {filtros[1]} de {filtros[0]} de "{prog_name}"'
 
-    _SELECT = f"""SELECT log_name, SEC_TO_TIME( AVG(dur) DIV 1 ) AS dur_media, SUM(dur) AS tot_sec, COUNT(id) AS num_llamadas
+    _SELECT = f"""SELECT log_name, SEC_TO_TIME( AVG(dur) DIV 1 ) AS dur_media,
+            SUM(dur) AS tot_sec, COUNT(id) AS num_llamadas
             FROM llamadas
             WHERE {select_fechas} programa_id = ?
             GROUP BY log_name
@@ -609,7 +623,8 @@ def d_ini_d_fin(aaaa, mm) -> tuple:
         ini = input('Día inicial: ')
         if int(ini) > d_fin:
             print(
-                f'Error: el día de inicio no puede ser mayor que el máximo número de días del mes ({d_fin})')
+                f'Error: el día de inicio no puede ser mayor que el máximo \
+número de días del mes ({d_fin})')
             continue
         elif int(ini) < 1:
             print('Error: el día de inicio no puede ser menor que 1')
@@ -618,7 +633,8 @@ def d_ini_d_fin(aaaa, mm) -> tuple:
         fin = input('Día final: ')
         if int(fin) > d_fin:
             print(
-                f'Error: el día de fin no puede ser mayor que el máximo número de días del mes ({d_fin})')
+                f'Error: el día de fin no puede ser mayor que el máximo \
+número de días del mes ({d_fin})')
             continue
         elif int(fin) < 1 or int(fin) < int(ini):
             print(
