@@ -504,11 +504,9 @@ def media_por_agente() -> None:
     filtros = [programa_id]
     print('\n1 - si quiere sacar los datos de un mes específico')
     print('0 - si quiere los datos de toda la serie')
-    # todo = True
     select_fechas = ''
     tit = f'Datos para toda la serie de "{prog_name}"'
     if input('Elija: ') == '1':
-        # todo = False
         filtros = filtros_dias_agente(programa_id)
         select_fechas = 'YEAR(fecha) = ? AND MONTH(fecha) = ? AND '
         tit = f'Datos para el {filtros[1]} de {filtros[0]} de "{prog_name}"'
