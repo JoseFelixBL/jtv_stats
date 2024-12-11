@@ -306,7 +306,7 @@ def dias_por_agente() -> None:
         _SELECT = f"""SELECT dd.log_name AS nombre, COUNT(fecha) AS 'Núm. días',
                         COUNT(fecha) * 13 AS '€s',
                         n_Ventas AS 'Núm. Ventas',  n_Ventas * 2 AS '€s',
-                        (COUNT(fecha) * 13) - (n_Ventas * 2) AS '__Diferencia__'
+                        (n_Ventas * 2) - (COUNT(fecha) * 13) AS '__Diferencia__'
                         FROM (
                             SELECT DISTINCT aa.log_name, fecha
                                 FROM {DB_TABLE_LLAMADAS} aa
@@ -430,7 +430,7 @@ def dias_por_agente() -> None:
         _SELECT = f"""SELECT dd.log_name AS nombre, COUNT(fecha) AS 'Núm. días',
                         COUNT(fecha) * 13 AS '€s',
                         n_Ventas AS 'Núm. Ventas',  n_Ventas * 2 AS '€s',
-                        (COUNT(fecha) * 13) - (n_Ventas * 2) AS '__Diferencia__'
+                        (n_Ventas * 2) - (COUNT(fecha) * 13) AS '__Diferencia__'
                         FROM (
                             SELECT DISTINCT aa.log_name, fecha
                                 FROM {DB_TABLE_LLAMADAS} aa
