@@ -488,6 +488,45 @@ def dias_por_agente() -> None:
                 ) tt
             )
         """
+        _SELECT_POR_VENTAS = f"""
+            SELECT * FROM (
+                SELECT 'Año', 'Mes', 'Nombre', 'Agente', 'Programa', '€/venta',
+                CAST('Num. Ventas' AS CHAR), 'Total €'
+                UNION ALL
+                (
+                    SELECT YEAR(llamadas.fecha) AS Año, MONTH(llamadas.fecha) AS Mes,
+                    agentes.nombre AS Nombre, agentes.log_name AS Agente,
+                    programas.nombre_monitor AS Programa,
+                    FORMAT( programas.factura_venta , 2, 'es_ES') AS '€/venta',
+                    COUNT(llamadas.id) AS 'Núm. Ventas',
+                    CAST( FORMAT ( COUNT(llamadas.id) * programas.factura_venta , 2, 'es_ES') AS CHAR )  AS 'Total €'
+                    FROM agentes
+                    INNER JOIN llamadas ON llamadas.log_name = agentes.log_name
+                    INNER JOIN programas ON programas.id = llamadas.programa_id
+                    WHERE YEAR(llamadas.fecha) = ? AND MONTH(llamadas.fecha) = ?
+                    AND llamadas.programa_id = ?
+                    AND llamadas.resultado = 'Sale closed'
+                    GROUP BY llamadas.log_name
+                    ORDER BY llamadas.log_name
+                )
+            ) resulting_set
+            UNION (
+                SELECT '-----', '---', '-----', '-----',
+                '-TOTAL:-->', e_venta, SUM(n_ventas),
+                CAST( FORMAT ( SUM(kk) , 2, 'es_ES') AS CHAR)
+                FROM (
+                    SELECT
+                    FORMAT(programas.factura_venta, 2, 'es_ES') AS e_venta,
+                    COUNT( llamadas.id) AS n_ventas,
+                    (COUNT( llamadas.id) * programas.factura_venta ) AS kk
+                    FROM llamadas
+                    INNER JOIN programas ON programas.id = llamadas.programa_id
+                    WHERE YEAR(llamadas.fecha) = ? AND MONTH(llamadas.fecha) = ?
+                    AND llamadas.programa_id = ?
+                    AND llamadas.resultado = 'Sale closed'
+                ) tt
+            )
+        """
 
     titulo('Días por agente', sep='.')
     # print('%-16s %s' % ('Agente', 'Días'))
@@ -509,6 +548,13 @@ def dias_por_agente() -> None:
         print(
             f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:7};{
                 str(row[5]):>10};{row[6]:>10}')
+    print()
+
+    titulo('Ventas por agente con Totales', sep='.')
+    for row in db_select(_SELECT_POR_VENTAS, list(filtros) + list(filtros)):
+        print(
+            f'{row[0]:5};{row[1]:4};{row[2]:20};{row[3]:10};{row[4]:16};{
+                row[5]:8};{str(row[6]):>12};{row[7]:>10}')
     print()
 
 
@@ -995,6 +1041,9 @@ def main() -> None:
         elif hacer == '3':
             titulo('Insertar los registros en la Base de Datos')
             introducir_datos()
+        elif hacer == '4':
+            titulo('Informe de VENTAS por agente')
+            ventas_por_agente()
         elif hacer == '5':
             titulo('Informe de días por agente')
             dias_por_agente()
