@@ -418,12 +418,11 @@ def dias_por_agente() -> None:
                 FORMAT ( COUNT(DISTINCT fecha) * programas.factura_hora, 2, 'es_ES') AS 'Total €'
                 FROM agentes
                 INNER JOIN {DB_TABLE_LLAMADAS} ON llamadas.log_name = agentes.log_name
-                INNER JOIN grupos ON grupos.grupo = agentes.grupo
                 INNER JOIN programas ON programas.id = llamadas.programa_id
                 WHERE YEAR(llamadas.fecha) = ? AND MONTH(llamadas.fecha) = ?
                 AND llamadas.programa_id = ?
                 GROUP BY llamadas.log_name
-                ORDER BY grupos.grupo, llamadas.log_name
+                ORDER BY llamadas.log_name
             )
         ) resulting_set
         UNION (
@@ -437,7 +436,6 @@ def dias_por_agente() -> None:
                 (COUNT(DISTINCT fecha) * programas.factura_hora ) AS kk
                 FROM agentes
                 INNER JOIN llamadas ON llamadas.log_name = agentes.log_name
-                INNER JOIN grupos ON grupos.grupo = agentes.grupo
                 INNER JOIN programas ON programas.id = llamadas.programa_id
                 WHERE YEAR(llamadas.fecha) = ? AND MONTH(llamadas.fecha) = ?
                 AND llamadas.programa_id = ?
@@ -501,7 +499,7 @@ def dias_por_agente() -> None:
                     COUNT(llamadas.id) AS 'Núm. Ventas',
                     CAST( FORMAT ( COUNT(llamadas.id) * programas.factura_venta , 2, 'es_ES') AS CHAR )  AS 'Total €'
                     FROM agentes
-                    INNER JOIN llamadas ON llamadas.log_name = agentes.log_name
+                    INNER JOIN {DB_TABLE_LLAMADAS} ON llamadas.log_name = agentes.log_name
                     INNER JOIN programas ON programas.id = llamadas.programa_id
                     WHERE YEAR(llamadas.fecha) = ? AND MONTH(llamadas.fecha) = ?
                     AND llamadas.programa_id = ?
