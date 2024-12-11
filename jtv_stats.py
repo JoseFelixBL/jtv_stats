@@ -111,8 +111,8 @@ def db_select(_SQL: str, valores: tuple = ()) -> list:
 
 def select_programa() -> tuple:
     """Selecciona el programa de TV de la lista de programas activos.
-    Retorna 4 campos: 
-    - ID del programa, 
+    Retorna 4 campos:
+    - ID del programa,
     - Nombre que sale en el MONITOR (Web)
     - Nombre del programa (SALIDA) a agregar en el nombre del fichero de Excel
     - Nombre del DIRECTORIO donde se guarda"""
@@ -223,7 +223,7 @@ def introducir_datos() -> None:
 
 
 def agregar_agentes_a_fecha(fecha, programa_id, agentes):
-    """Inserta los registros de agentes que no recibieron llamadas 
+    """Inserta los registros de agentes que no recibieron llamadas
     en una fecha y servicio determinado."""
     _INSERT = f"""INSERT INTO {DB_TABLE_LLAMADAS}
         (fecha, hora, llamante, dur, log_name, resultado, programa_id)
@@ -301,6 +301,28 @@ def dias_por_agente() -> None:
                             AND programa_id = ?
                             AND log_name <> 'tomfp' AND log_name <> 'yudith'
                         ) table_alias
+                        GROUP BY nombre
+        """
+        _SELECT = f"""SELECT dd.log_name AS nombre, COUNT(fecha) AS 'Núm. días',
+                        COUNT(fecha) * 13 AS '€s',
+                        n_Ventas AS 'Núm. Ventas',  n_Ventas * 2 AS '€s',
+                        (COUNT(fecha) * 13) - (n_Ventas * 2) AS '__Diferencia__'
+                        FROM (
+                            SELECT DISTINCT aa.log_name, fecha
+                                FROM {DB_TABLE_LLAMADAS} aa
+                            WHERE YEAR(fecha) = ? AND MONTH(fecha) = ?
+                            AND programa_id = ?
+                            AND log_name <> 'tomfp' AND log_name <> 'yudith'
+                        ) dd
+                        LEFT JOIN (
+                            SELECT ll.log_name, COUNT(resultado) AS n_Ventas
+                            FROM {DB_TABLE_LLAMADAS} ll
+                            WHERE YEAR(fecha) = ? AND MONTH(fecha) = ?
+                                AND programa_id = ?
+                                AND resultado = 'Sale closed'
+                                AND log_name <> 'tomfp' AND log_name <> 'yudith'
+                            GROUP BY ll.log_name
+                        ) vv ON dd.log_name = vv.log_name
                         GROUP BY nombre
         """
         _SELECT_TOT = f"""SELECT * FROM (
@@ -403,6 +425,26 @@ def dias_por_agente() -> None:
                             WHERE YEAR(fecha) = ? AND MONTH(fecha) = ?
                             AND programa_id = ?
                         ) table_alias
+                        GROUP BY nombre
+        """
+        _SELECT = f"""SELECT dd.log_name AS nombre, COUNT(fecha) AS 'Núm. días',
+                        COUNT(fecha) * 13 AS '€s',
+                        n_Ventas AS 'Núm. Ventas',  n_Ventas * 2 AS '€s',
+                        (COUNT(fecha) * 13) - (n_Ventas * 2) AS '__Diferencia__'
+                        FROM (
+                            SELECT DISTINCT aa.log_name, fecha
+                                FROM {DB_TABLE_LLAMADAS} aa
+                            WHERE YEAR(fecha) = ? AND MONTH(fecha) = ?
+                            AND programa_id = ?
+                        ) dd
+                        LEFT JOIN (
+                            SELECT ll.log_name, COUNT(resultado) AS n_Ventas
+                            FROM {DB_TABLE_LLAMADAS} ll
+                            WHERE YEAR(fecha) = ? AND MONTH(fecha) = ?
+                                AND programa_id = ?
+                                AND resultado = 'Sale closed'
+                            GROUP BY ll.log_name
+                        ) vv ON dd.log_name = vv.log_name
                         GROUP BY nombre
         """
         _SELECT_TOT = f"""SELECT * FROM (
@@ -526,12 +568,23 @@ def dias_por_agente() -> None:
             )
         """
 
-    titulo('Días por agente', sep='.')
+    # titulo('Días por agente', sep='.')
+    # # print('%-16s %s' % ('Agente', 'Días'))
+    # print(f"{'Agente':<16s} Días")
+    # print('='*16, '='*4)
+    # for row in db_select(_SELECT, filtros):
+    #     print(f'{row[0]:16} {row[1]:4}')
+    # print()
+
+    titulo('Días y ventas por agente', sep='.')
     # print('%-16s %s' % ('Agente', 'Días'))
-    print(f"{'Agente':<16s} Días")
-    print('='*16, '='*4)
-    for row in db_select(_SELECT, filtros):
-        print(f'{row[0]:16} {row[1]:4}')
+    print(f"{'Agente':<16s} Días Euros  Ventas Euros  Diferencia")
+    print('='*16, '='*4, '='*5+' ', '='*6, '='*5+' ', '='*10)
+    for row in db_select(_SELECT, list(filtros) + list(filtros)):
+        print(f'{row[0]:16} {row[1]:4} {row[2]:5}  {
+              (row[3] if row[3] else '   ---'):6} {
+              (row[4] if row[4] else '  ---'):5}  {
+              (row[5] if row[5] else '       ---'):10}')
     print()
 
     titulo('Días por agente con Totales', sep='.')
